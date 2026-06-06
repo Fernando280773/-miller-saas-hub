@@ -270,6 +270,46 @@ const MOCK_INTEGRATIONS: Integration[] = [
     type: 'telegram',
     status: 'Inactive',
     config: { botToken: '', chatId: '', notifyOrders: 'true', notifyLowStock: 'true' }
+  },
+  {
+    id: 'int-15',
+    store_id: 'store-1',
+    name: 'GoCardless',
+    type: 'gocardless',
+    status: 'Inactive',
+    config: { accessToken: '', environment: 'sandbox', webhookSecret: '' }
+  },
+  {
+    id: 'int-16',
+    store_id: 'store-1',
+    name: 'TrueLayer',
+    type: 'truelayer',
+    status: 'Inactive',
+    config: { clientId: '', clientSecret: '', redirectUri: '' }
+  },
+  {
+    id: 'int-17',
+    store_id: 'store-1',
+    name: 'Volt',
+    type: 'volt',
+    status: 'Inactive',
+    config: { apiKey: '', merchantId: '', webhookUrl: '' }
+  },
+  {
+    id: 'int-18',
+    store_id: 'store-1',
+    name: 'Banked',
+    type: 'banked',
+    status: 'Inactive',
+    config: { apiKey: '', merchantId: '', environment: 'sandbox' }
+  },
+  {
+    id: 'int-19',
+    store_id: 'store-1',
+    name: 'Tink (Visa)',
+    type: 'tink',
+    status: 'Inactive',
+    config: { clientId: '', clientSecret: '', market: 'GB' }
   }
 ];
 

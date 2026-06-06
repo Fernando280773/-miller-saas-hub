@@ -51,7 +51,12 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
           { id: `int-11-${storeId}`, store_id: storeId, name: 'Mailchimp Marketing', type: 'email_marketing', status: 'Inactive', config: { apiKey: '', listId: '', fromEmail: '' } },
           { id: `int-12-${storeId}`, store_id: storeId, name: 'Xero Accounting',     type: 'accounting',      status: 'Inactive', config: { tenantId: '', clientId: '', syncMode: 'daily' } },
           { id: `int-13-${storeId}`, store_id: storeId, name: 'Square POS',               type: 'pos',      status: 'Inactive', config: { accessToken: '', locationId: '', syncInventory: 'true' } },
-          { id: `int-14-${storeId}`, store_id: storeId, name: 'Telegram Notifications',   type: 'telegram', status: 'Inactive', config: { botToken: '', chatId: '', notifyOrders: 'true', notifyLowStock: 'true' } },
+          { id: `int-14-${storeId}`, store_id: storeId, name: 'Telegram Notifications', type: 'telegram',    status: 'Inactive', config: { botToken: '', chatId: '', notifyOrders: 'true', notifyLowStock: 'true' } },
+          { id: `int-15-${storeId}`, store_id: storeId, name: 'GoCardless',            type: 'gocardless',  status: 'Inactive', config: { accessToken: '', environment: 'sandbox', webhookSecret: '' } },
+          { id: `int-16-${storeId}`, store_id: storeId, name: 'TrueLayer',             type: 'truelayer',   status: 'Inactive', config: { clientId: '', clientSecret: '', redirectUri: '' } },
+          { id: `int-17-${storeId}`, store_id: storeId, name: 'Volt',                  type: 'volt',        status: 'Inactive', config: { apiKey: '', merchantId: '', webhookUrl: '' } },
+          { id: `int-18-${storeId}`, store_id: storeId, name: 'Banked',                type: 'banked',      status: 'Inactive', config: { apiKey: '', merchantId: '', environment: 'sandbox' } },
+          { id: `int-19-${storeId}`, store_id: storeId, name: 'Tink (Visa)',            type: 'tink',        status: 'Inactive', config: { clientId: '', clientSecret: '', market: 'GB' } },
         ];
 
         const existingTypes = new Set(data.map(d => d.type));
@@ -181,6 +186,11 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
       case 'accounting': return '📊';
       case 'pos': return '🏪';
       case 'telegram': return '✈️';
+      case 'gocardless': return '🏦';
+      case 'truelayer': return '⚡';
+      case 'volt': return '🔋';
+      case 'banked': return '📲';
+      case 'tink': return '💳';
       default: return '🔌';
     }
   };
@@ -237,6 +247,11 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                 {item.type === 'accounting' && "Sync daily sales, invoices, and refunds straight into Xero — eliminates manual bookkeeping and reconciliation."}
                 {item.type === 'pos' && "Connect Square in-store till to keep online and physical inventory in sync in real-time across both channels."}
                 {item.type === 'telegram' && "Instantly notify your Telegram channel or group when new orders arrive, stock runs low, or payments are confirmed."}
+                {item.type === 'gocardless' && "UK's leading direct bank payment network. Send payment links and QR invoices — customers pay straight from their bank in 30+ countries."}
+                {item.type === 'truelayer' && "Open Banking payments across UK and 21 European countries. Generate instant bank transfer links and QR codes for invoices."}
+                {item.type === 'volt' && "Global real-time bank-to-bank payments. Send QR codes and payment links for invoices — covers UK, Europe, Brazil and Australia."}
+                {item.type === 'banked' && "UK Open Banking specialist. 'Pay by Bank' QR codes and payment links — no card fees, instant settlement, works with all UK banks."}
+                {item.type === 'tink' && "Visa-owned European Open Banking infrastructure. Payment initiation across 18 markets — send invoice links customers pay via their bank app."}
               </p>
             </div>
 
@@ -632,6 +647,126 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
                       Create bot via <strong>@BotFather</strong> on Telegram to get your token. Forward a message from your channel to <strong>@userinfobot</strong> to get the Chat ID.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'gocardless' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Access Token</label>
+                      <input type="password" className="form-control" value={configKeys.accessToken || ''} onChange={(e) => setConfigKeys({ ...configKeys, accessToken: e.target.value })} placeholder="sandbox_xxxx... or live_xxxx..." required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Environment</label>
+                      <select className="form-control" value={configKeys.environment || 'sandbox'} onChange={(e) => setConfigKeys({ ...configKeys, environment: e.target.value })}>
+                        <option value="sandbox">Sandbox (Test)</option>
+                        <option value="live">Live</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Webhook Secret</label>
+                      <input type="password" className="form-control" value={configKeys.webhookSecret || ''} onChange={(e) => setConfigKeys({ ...configKeys, webhookSecret: e.target.value })} placeholder="From GoCardless dashboard" />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Get token from <strong>GoCardless Dashboard → Developers → Access Tokens</strong>. Supports UK, EU and international direct bank payments.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'truelayer' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Client ID</label>
+                      <input type="text" className="form-control" value={configKeys.clientId || ''} onChange={(e) => setConfigKeys({ ...configKeys, clientId: e.target.value })} placeholder="From TrueLayer Console" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Client Secret</label>
+                      <input type="password" className="form-control" value={configKeys.clientSecret || ''} onChange={(e) => setConfigKeys({ ...configKeys, clientSecret: e.target.value })} placeholder="From TrueLayer Console" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Redirect URI</label>
+                      <input type="url" className="form-control" value={configKeys.redirectUri || ''} onChange={(e) => setConfigKeys({ ...configKeys, redirectUri: e.target.value })} placeholder="https://yourdomain.com/callback" required />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Register at <strong>console.truelayer.com</strong>. Covers UK + 21 European countries — generates payment links and QR codes instantly.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'volt' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">API Key</label>
+                      <input type="password" className="form-control" value={configKeys.apiKey || ''} onChange={(e) => setConfigKeys({ ...configKeys, apiKey: e.target.value })} placeholder="volt_live_xxxxxxxxxxxx" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Merchant ID</label>
+                      <input type="text" className="form-control" value={configKeys.merchantId || ''} onChange={(e) => setConfigKeys({ ...configKeys, merchantId: e.target.value })} placeholder="From Volt merchant portal" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Webhook URL</label>
+                      <input type="url" className="form-control" value={configKeys.webhookUrl || ''} onChange={(e) => setConfigKeys({ ...configKeys, webhookUrl: e.target.value })} placeholder="https://yourdomain.com/volt/webhook" />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Sign up at <strong>volt.io</strong>. Supports global real-time bank payments — UK, Europe, Brazil, Australia. QR codes and payment links built-in.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'banked' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">API Key</label>
+                      <input type="password" className="form-control" value={configKeys.apiKey || ''} onChange={(e) => setConfigKeys({ ...configKeys, apiKey: e.target.value })} placeholder="banked_xxxxxxxxxxxx" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Merchant ID</label>
+                      <input type="text" className="form-control" value={configKeys.merchantId || ''} onChange={(e) => setConfigKeys({ ...configKeys, merchantId: e.target.value })} placeholder="From Banked dashboard" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Environment</label>
+                      <select className="form-control" value={configKeys.environment || 'sandbox'} onChange={(e) => setConfigKeys({ ...configKeys, environment: e.target.value })}>
+                        <option value="sandbox">Sandbox (Test)</option>
+                        <option value="live">Live</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Apply at <strong>banked.com</strong>. UK Open Banking specialist — QR code and "Pay by Bank" link for every invoice, no card fees, instant settlement.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'tink' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Client ID</label>
+                      <input type="text" className="form-control" value={configKeys.clientId || ''} onChange={(e) => setConfigKeys({ ...configKeys, clientId: e.target.value })} placeholder="From Tink Console" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Client Secret</label>
+                      <input type="password" className="form-control" value={configKeys.clientSecret || ''} onChange={(e) => setConfigKeys({ ...configKeys, clientSecret: e.target.value })} placeholder="From Tink Console" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Primary Market</label>
+                      <select className="form-control" value={configKeys.market || 'GB'} onChange={(e) => setConfigKeys({ ...configKeys, market: e.target.value })}>
+                        <option value="GB">United Kingdom (GB)</option>
+                        <option value="DE">Germany (DE)</option>
+                        <option value="FR">France (FR)</option>
+                        <option value="ES">Spain (ES)</option>
+                        <option value="IT">Italy (IT)</option>
+                        <option value="NL">Netherlands (NL)</option>
+                        <option value="SE">Sweden (SE)</option>
+                        <option value="NO">Norway (NO)</option>
+                        <option value="FI">Finland (FI)</option>
+                        <option value="DK">Denmark (DK)</option>
+                        <option value="BE">Belgium (BE)</option>
+                        <option value="AT">Austria (AT)</option>
+                        <option value="PT">Portugal (PT)</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Register at <strong>console.tink.com</strong> (owned by Visa). Covers 18 European markets — customers pay invoices directly from their bank app.
                     </p>
                   </div>
                 )}
