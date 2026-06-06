@@ -11,7 +11,11 @@ import {
   ArrowLeft,
   Sliders,
   Megaphone,
-  Bot
+  Bot,
+  Share2,
+  Link2,
+  Users,
+  Truck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +34,10 @@ export default function DashboardSidebar({ storeName = "Aura Artisans", storeLog
     { name: 'Ad Intelligence', href: '/dashboard/ads', icon: Megaphone },
     { name: 'AI Product Scraper', href: '/dashboard/scraper', icon: Bot },
     { name: 'Integrations Panel', href: '/dashboard/integrations', icon: Layers },
+    { name: 'Social Media Hub', href: '/dashboard/social-setup', icon: Share2 },
+    { name: 'Platform Connector', href: '/dashboard/connect', icon: Link2 },
+    { name: 'Social Accounts', href: '/dashboard/social-accounts', icon: Users },
+    { name: 'Purchase Hub', href: '/dashboard/purchases', icon: Truck },
   ];
 
   return (
