@@ -56,7 +56,8 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
           { id: `int-16-${storeId}`, store_id: storeId, name: 'TrueLayer',             type: 'truelayer',   status: 'Inactive', config: { clientId: '', clientSecret: '', redirectUri: '' } },
           { id: `int-17-${storeId}`, store_id: storeId, name: 'Volt',                  type: 'volt',        status: 'Inactive', config: { apiKey: '', merchantId: '', webhookUrl: '' } },
           { id: `int-18-${storeId}`, store_id: storeId, name: 'Banked',                type: 'banked',      status: 'Inactive', config: { apiKey: '', merchantId: '', environment: 'sandbox' } },
-          { id: `int-19-${storeId}`, store_id: storeId, name: 'Tink (Visa)',            type: 'tink',        status: 'Inactive', config: { clientId: '', clientSecret: '', market: 'GB' } },
+          { id: `int-19-${storeId}`, store_id: storeId, name: 'Tink (Visa)',           type: 'tink',         status: 'Inactive', config: { clientId: '', clientSecret: '', market: 'GB' } },
+          { id: `int-20-${storeId}`, store_id: storeId, name: 'Lead Capture Form',    type: 'lead_capture', status: 'Inactive', config: { formTitle: 'Get in Touch', notifyEmail: '', webhookUrl: '', requirePhone: 'true', requireCountry: 'true' } },
         ];
 
         const existingTypes = new Set(data.map(d => d.type));
@@ -191,6 +192,7 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
       case 'volt': return '🔋';
       case 'banked': return '📲';
       case 'tink': return '💳';
+      case 'lead_capture': return '📋';
       default: return '🔌';
     }
   };
@@ -252,6 +254,7 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                 {item.type === 'volt' && "Global real-time bank-to-bank payments. Send QR codes and payment links for invoices — covers UK, Europe, Brazil and Australia."}
                 {item.type === 'banked' && "UK Open Banking specialist. 'Pay by Bank' QR codes and payment links — no card fees, instant settlement, works with all UK banks."}
                 {item.type === 'tink' && "Visa-owned European Open Banking infrastructure. Payment initiation across 18 markets — send invoice links customers pay via their bank app."}
+                {item.type === 'lead_capture' && "Add a customer enquiry form to your website — collects name, phone, email and country. Leads sent to your email or any CRM via webhook."}
               </p>
             </div>
 
@@ -768,6 +771,48 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                     <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
                       Register at <strong>console.tink.com</strong> (owned by Visa). Covers 18 European markets — customers pay invoices directly from their bank app.
                     </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'lead_capture' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Form Title</label>
+                      <input type="text" className="form-control" value={configKeys.formTitle || 'Get in Touch'} onChange={(e) => setConfigKeys({ ...configKeys, formTitle: e.target.value })} placeholder="e.g. Get in Touch, Request a Quote..." />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Notify Email (leads sent here)</label>
+                      <input type="email" className="form-control" value={configKeys.notifyEmail || ''} onChange={(e) => setConfigKeys({ ...configKeys, notifyEmail: e.target.value })} placeholder="your@email.com" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">CRM Webhook URL <span style={{ fontWeight: 400, color: 'var(--saas-text-muted)' }}>(optional)</span></label>
+                      <input type="url" className="form-control" value={configKeys.webhookUrl || ''} onChange={(e) => setConfigKeys({ ...configKeys, webhookUrl: e.target.value })} placeholder="https://your-crm.com/webhook/leads" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Phone Number</label>
+                        <select className="form-control" value={configKeys.requirePhone || 'true'} onChange={(e) => setConfigKeys({ ...configKeys, requirePhone: e.target.value })}>
+                          <option value="true">Required</option>
+                          <option value="optional">Optional</option>
+                          <option value="false">Hide</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Country</label>
+                        <select className="form-control" value={configKeys.requireCountry || 'true'} onChange={(e) => setConfigKeys({ ...configKeys, requireCountry: e.target.value })}>
+                          <option value="true">Required</option>
+                          <option value="optional">Optional</option>
+                          <option value="false">Hide</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '1rem', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 8, padding: '0.75rem 1rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-secondary)', margin: 0, lineHeight: 1.6 }}>
+                        <strong style={{ color: 'var(--saas-primary)' }}>📋 Form fields collected:</strong><br />
+                        Full Name · Email Address · Phone Number · Country<br />
+                        Each submission lands in your email and optionally your CRM.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

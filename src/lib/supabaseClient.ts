@@ -310,6 +310,14 @@ const MOCK_INTEGRATIONS: Integration[] = [
     type: 'tink',
     status: 'Inactive',
     config: { clientId: '', clientSecret: '', market: 'GB' }
+  },
+  {
+    id: 'int-20',
+    store_id: 'store-1',
+    name: 'Lead Capture Form',
+    type: 'lead_capture',
+    status: 'Inactive',
+    config: { formTitle: 'Get in Touch', notifyEmail: '', webhookUrl: '', requirePhone: 'true', requireCountry: 'true' }
   }
 ];
 
