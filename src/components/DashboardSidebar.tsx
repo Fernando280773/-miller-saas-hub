@@ -15,7 +15,8 @@ import {
   Share2,
   Link2,
   Users,
-  Truck
+  Truck,
+  Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,6 +39,7 @@ export default function DashboardSidebar({ storeName = "Aura Artisans", storeLog
     { name: 'Platform Connector', href: '/dashboard/connect', icon: Link2 },
     { name: 'Social Accounts', href: '/dashboard/social-accounts', icon: Users },
     { name: 'Purchase Hub', href: '/dashboard/purchases', icon: Truck },
+    { name: 'Landing Builder', href: '/dashboard/landing-builder', icon: Globe },
   ];
 
   return (
