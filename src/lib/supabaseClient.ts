@@ -222,6 +222,54 @@ const MOCK_INTEGRATIONS: Integration[] = [
     type: 'logistics',
     status: 'Inactive',
     config: { apiSecret: 'log_sec_••••••••', originPostcode: 'EC1A 1BB' }
+  },
+  {
+    id: 'int-9',
+    store_id: 'store-1',
+    name: 'WhatsApp Business',
+    type: 'whatsapp',
+    status: 'Inactive',
+    config: { phoneNumberId: '', accessToken: '', businessName: '' }
+  },
+  {
+    id: 'int-10',
+    store_id: 'store-1',
+    name: 'Google My Business',
+    type: 'google_business',
+    status: 'Inactive',
+    config: { locationId: '', accountId: '', category: '' }
+  },
+  {
+    id: 'int-11',
+    store_id: 'store-1',
+    name: 'Mailchimp Marketing',
+    type: 'email_marketing',
+    status: 'Inactive',
+    config: { apiKey: '', listId: '', fromEmail: '' }
+  },
+  {
+    id: 'int-12',
+    store_id: 'store-1',
+    name: 'Xero Accounting',
+    type: 'accounting',
+    status: 'Inactive',
+    config: { tenantId: '', clientId: '', syncMode: 'daily' }
+  },
+  {
+    id: 'int-13',
+    store_id: 'store-1',
+    name: 'Square POS',
+    type: 'pos',
+    status: 'Inactive',
+    config: { accessToken: '', locationId: '', syncInventory: 'true' }
+  },
+  {
+    id: 'int-14',
+    store_id: 'store-1',
+    name: 'Telegram Notifications',
+    type: 'telegram',
+    status: 'Inactive',
+    config: { botToken: '', chatId: '', notifyOrders: 'true', notifyLowStock: 'true' }
   }
 ];
 
@@ -356,7 +404,17 @@ export const db = {
       if (!error && data) return data as Order[];
     }
     const all = getLocalStorageData('db_orders', MOCK_ORDERS);
-    return all.filter(o => o.store_id === storeId);
+    const forStore = all.filter(o => o.store_id === storeId);
+    if (forStore.length === 0) {
+      const seeded = MOCK_ORDERS.map(o => ({
+        ...o,
+        id: `${o.id}-${storeId}`,
+        store_id: storeId,
+      }));
+      setLocalStorageData('db_orders', [...all, ...seeded]);
+      return seeded;
+    }
+    return forStore;
   },
 
   updateOrderStatus: async (orderId: string, status: Order['status']): Promise<boolean> => {
@@ -376,7 +434,19 @@ export const db = {
       if (!error && data) return data as Integration[];
     }
     const all = getLocalStorageData('db_integrations_v2', MOCK_INTEGRATIONS);
-    return all.filter(i => i.store_id === storeId);
+    const forStore = all.filter(i => i.store_id === storeId);
+    // Seed default integrations for this store if none exist yet
+    if (forStore.length === 0) {
+      const seeded = MOCK_INTEGRATIONS.map(i => ({
+        ...i,
+        id: `${i.id}-${storeId}`,
+        store_id: storeId,
+      }));
+      const updated = [...all, ...seeded];
+      setLocalStorageData('db_integrations_v2', updated);
+      return seeded;
+    }
+    return forStore;
   },
 
   toggleIntegration: async (integrationId: string, status: Integration['status']): Promise<boolean> => {

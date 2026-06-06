@@ -33,7 +33,39 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
   useEffect(() => {
     const fetchIntegrations = async () => {
       setLoading(true);
-      const data = await db.getIntegrations(storeId);
+      let data = await db.getIntegrations(storeId);
+
+      // Master list — all types every store should have
+      if (typeof window !== 'undefined') {
+        const MASTER: Integration[] = [
+          { id: `int-1-${storeId}`,  store_id: storeId, name: 'Stripe Gateway',      type: 'payment',         status: 'Active',   config: { publicKey: 'pk_test_...', mode: 'Live' } },
+          { id: `int-2-${storeId}`,  store_id: storeId, name: 'Website Web Scraper', type: 'scraper',         status: 'Inactive', config: { feedUrl: 'https://mock-shop.com/catalog.json' } },
+          { id: `int-3-${storeId}`,  store_id: storeId, name: 'eBay Platform',       type: 'ebay',            status: 'Inactive', config: { sellerId: '', region: 'UK' } },
+          { id: `int-4-${storeId}`,  store_id: storeId, name: 'Uber Eats',           type: 'food_delivery',   status: 'Inactive', config: { restaurantId: '', webhookUrl: '' } },
+          { id: `int-5b-${storeId}`, store_id: storeId, name: 'Just Eat',            type: 'just_eat',        status: 'Inactive', config: { restaurantId: '', webhookUrl: '' } },
+          { id: `int-6-${storeId}`,  store_id: storeId, name: 'Amazon Connector',    type: 'amazon',          status: 'Inactive', config: { sellerAccessId: '', mode: 'FBA' } },
+          { id: `int-7-${storeId}`,  store_id: storeId, name: 'Alibaba Importer',    type: 'alibaba',         status: 'Inactive', config: { supplierId: '', apiKey: '' } },
+          { id: `int-8-${storeId}`,  store_id: storeId, name: 'Logistics Connector', type: 'logistics',       status: 'Inactive', config: { apiSecret: '', originPostcode: '' } },
+          { id: `int-9-${storeId}`,  store_id: storeId, name: 'WhatsApp Business',   type: 'whatsapp',        status: 'Inactive', config: { phoneNumberId: '', accessToken: '', businessName: '' } },
+          { id: `int-10-${storeId}`, store_id: storeId, name: 'Google My Business',  type: 'google_business', status: 'Inactive', config: { locationId: '', accountId: '', category: '' } },
+          { id: `int-11-${storeId}`, store_id: storeId, name: 'Mailchimp Marketing', type: 'email_marketing', status: 'Inactive', config: { apiKey: '', listId: '', fromEmail: '' } },
+          { id: `int-12-${storeId}`, store_id: storeId, name: 'Xero Accounting',     type: 'accounting',      status: 'Inactive', config: { tenantId: '', clientId: '', syncMode: 'daily' } },
+          { id: `int-13-${storeId}`, store_id: storeId, name: 'Square POS',               type: 'pos',      status: 'Inactive', config: { accessToken: '', locationId: '', syncInventory: 'true' } },
+          { id: `int-14-${storeId}`, store_id: storeId, name: 'Telegram Notifications',   type: 'telegram', status: 'Inactive', config: { botToken: '', chatId: '', notifyOrders: 'true', notifyLowStock: 'true' } },
+        ];
+
+        const existingTypes = new Set(data.map(d => d.type));
+        const missing = MASTER.filter(m => !existingTypes.has(m.type));
+
+        if (data.length === 0 || missing.length > 0) {
+          const raw = localStorage.getItem('db_integrations_v2');
+          const allStored: Integration[] = raw ? JSON.parse(raw) : [];
+          const toAdd = data.length === 0 ? MASTER : missing;
+          localStorage.setItem('db_integrations_v2', JSON.stringify([...allStored, ...toAdd]));
+          data = data.length === 0 ? MASTER : [...data, ...missing];
+        }
+      }
+
       setIntegrations(data);
       setLoading(false);
     };
@@ -143,6 +175,12 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
       case 'amazon': return '📦';
       case 'alibaba': return '🌐';
       case 'logistics': return '🚛';
+      case 'whatsapp': return '💬';
+      case 'google_business': return '📍';
+      case 'email_marketing': return '📧';
+      case 'accounting': return '📊';
+      case 'pos': return '🏪';
+      case 'telegram': return '✈️';
       default: return '🔌';
     }
   };
@@ -193,6 +231,12 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                 {item.type === 'amazon' && "Manage FBA shipments and sync product catalog with Amazon Seller Central."}
                 {item.type === 'alibaba' && "Import wholesale products and supplier details from Alibaba global directory."}
                 {item.type === 'logistics' && "Coordinate carrier shipments, tracking numbers, and calculate delivery postage."}
+                {item.type === 'whatsapp' && "Auto-send order confirmations, delivery updates, and promotions to customers via WhatsApp Business."}
+                {item.type === 'google_business' && "Sync your products and menu directly to your Google Maps listing so customers see live stock and prices in search."}
+                {item.type === 'email_marketing' && "Auto-trigger promotional emails, abandoned cart recovery, order receipts, and newsletters to your customer list."}
+                {item.type === 'accounting' && "Sync daily sales, invoices, and refunds straight into Xero — eliminates manual bookkeeping and reconciliation."}
+                {item.type === 'pos' && "Connect Square in-store till to keep online and physical inventory in sync in real-time across both channels."}
+                {item.type === 'telegram' && "Instantly notify your Telegram channel or group when new orders arrive, stock runs low, or payments are confirmed."}
               </p>
             </div>
 
@@ -438,26 +482,157 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                   <div>
                     <div className="form-group">
                       <label className="form-label">Carrier API Secret</label>
-                      <input 
-                        type="password" 
-                        className="form-control" 
-                        value={configKeys.apiSecret || ''} 
-                        onChange={(e) => setConfigKeys({ ...configKeys, apiSecret: e.target.value })}
-                        placeholder="log_sec_••••••••"
-                        required
-                      />
+                      <input type="password" className="form-control" value={configKeys.apiSecret || ''} onChange={(e) => setConfigKeys({ ...configKeys, apiSecret: e.target.value })} placeholder="log_sec_••••••••" required />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Origin Postcode</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        value={configKeys.originPostcode || ''} 
-                        onChange={(e) => setConfigKeys({ ...configKeys, originPostcode: e.target.value })}
-                        placeholder="e.g. EC1A 1BB"
-                        required
-                      />
+                      <input type="text" className="form-control" value={configKeys.originPostcode || ''} onChange={(e) => setConfigKeys({ ...configKeys, originPostcode: e.target.value })} placeholder="e.g. EC1A 1BB" required />
                     </div>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'whatsapp' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">WhatsApp Phone Number ID</label>
+                      <input type="text" className="form-control" value={configKeys.phoneNumberId || ''} onChange={(e) => setConfigKeys({ ...configKeys, phoneNumberId: e.target.value })} placeholder="e.g. 123456789012345" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Business Access Token</label>
+                      <input type="password" className="form-control" value={configKeys.accessToken || ''} onChange={(e) => setConfigKeys({ ...configKeys, accessToken: e.target.value })} placeholder="EAAxxxxxx..." required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Business Display Name</label>
+                      <input type="text" className="form-control" value={configKeys.businessName || ''} onChange={(e) => setConfigKeys({ ...configKeys, businessName: e.target.value })} placeholder="e.g. Kings Flavour Kitchen" />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Get your Phone Number ID and token from <strong>Meta Business Suite → WhatsApp API</strong>.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'google_business' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Google Account ID</label>
+                      <input type="text" className="form-control" value={configKeys.accountId || ''} onChange={(e) => setConfigKeys({ ...configKeys, accountId: e.target.value })} placeholder="accounts/123456789" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Location ID</label>
+                      <input type="text" className="form-control" value={configKeys.locationId || ''} onChange={(e) => setConfigKeys({ ...configKeys, locationId: e.target.value })} placeholder="locations/987654321" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Business Category</label>
+                      <select className="form-control" value={configKeys.category || 'restaurant'} onChange={(e) => setConfigKeys({ ...configKeys, category: e.target.value })}>
+                        <option value="restaurant">Restaurant / Food</option>
+                        <option value="retail">Retail Shop</option>
+                        <option value="salon">Salon / Beauty</option>
+                        <option value="service">Service Business</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Find IDs in <strong>Google Business Profile API Console</strong>. Products sync to your Maps listing automatically.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'email_marketing' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Mailchimp API Key</label>
+                      <input type="password" className="form-control" value={configKeys.apiKey || ''} onChange={(e) => setConfigKeys({ ...configKeys, apiKey: e.target.value })} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-us1" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Audience List ID</label>
+                      <input type="text" className="form-control" value={configKeys.listId || ''} onChange={(e) => setConfigKeys({ ...configKeys, listId: e.target.value })} placeholder="e.g. a1b2c3d4e5" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">From Email Address</label>
+                      <input type="email" className="form-control" value={configKeys.fromEmail || ''} onChange={(e) => setConfigKeys({ ...configKeys, fromEmail: e.target.value })} placeholder="hello@yourstore.com" required />
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Get API key from <strong>Mailchimp → Account → Extras → API Keys</strong>. List ID from Audience settings.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'accounting' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Xero Tenant / Organisation ID</label>
+                      <input type="text" className="form-control" value={configKeys.tenantId || ''} onChange={(e) => setConfigKeys({ ...configKeys, tenantId: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">OAuth Client ID</label>
+                      <input type="text" className="form-control" value={configKeys.clientId || ''} onChange={(e) => setConfigKeys({ ...configKeys, clientId: e.target.value })} placeholder="From Xero Developer App" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Sync Frequency</label>
+                      <select className="form-control" value={configKeys.syncMode || 'daily'} onChange={(e) => setConfigKeys({ ...configKeys, syncMode: e.target.value })}>
+                        <option value="realtime">Real-time (every order)</option>
+                        <option value="hourly">Hourly</option>
+                        <option value="daily">Daily (midnight)</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Create app at <strong>developer.xero.com</strong>. Sales, invoices, and refunds sync automatically.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'pos' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Square Access Token</label>
+                      <input type="password" className="form-control" value={configKeys.accessToken || ''} onChange={(e) => setConfigKeys({ ...configKeys, accessToken: e.target.value })} placeholder="EAAAxxxxxxxxx..." required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Location ID</label>
+                      <input type="text" className="form-control" value={configKeys.locationId || ''} onChange={(e) => setConfigKeys({ ...configKeys, locationId: e.target.value })} placeholder="e.g. L1234ABCD" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Inventory Sync</label>
+                      <select className="form-control" value={configKeys.syncInventory || 'true'} onChange={(e) => setConfigKeys({ ...configKeys, syncInventory: e.target.value })}>
+                        <option value="true">Sync inventory both ways (online ↔ in-store)</option>
+                        <option value="online_only">Online → In-Store only</option>
+                        <option value="false">Orders only, no inventory sync</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Get token from <strong>Square Developer Dashboard → Applications</strong>. Location ID from your Square account settings.
+                    </p>
+                  </div>
+                )}
+
+                {selectedIntegration.type === 'telegram' && (
+                  <div>
+                    <div className="form-group">
+                      <label className="form-label">Bot Token</label>
+                      <input type="password" className="form-control" value={configKeys.botToken || ''} onChange={(e) => setConfigKeys({ ...configKeys, botToken: e.target.value })} placeholder="123456789:AAxxxxxxxxxxxxxx" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Chat ID / Channel ID</label>
+                      <input type="text" className="form-control" value={configKeys.chatId || ''} onChange={(e) => setConfigKeys({ ...configKeys, chatId: e.target.value })} placeholder="e.g. -1001234567890" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Notify on New Orders</label>
+                      <select className="form-control" value={configKeys.notifyOrders || 'true'} onChange={(e) => setConfigKeys({ ...configKeys, notifyOrders: e.target.value })}>
+                        <option value="true">Yes — message on every new order</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Notify on Low Stock</label>
+                      <select className="form-control" value={configKeys.notifyLowStock || 'true'} onChange={(e) => setConfigKeys({ ...configKeys, notifyLowStock: e.target.value })}>
+                        <option value="true">Yes — alert when stock drops below 5 units</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
+                      Create bot via <strong>@BotFather</strong> on Telegram to get your token. Forward a message from your channel to <strong>@userinfobot</strong> to get the Chat ID.
+                    </p>
                   </div>
                 )}
               </div>
