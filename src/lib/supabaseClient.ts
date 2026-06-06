@@ -1,0 +1,457 @@
+// Supabase Client Initializer with Dynamic Local-Storage Fallback
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+
+// Check if credentials are using defaults
+const isMock = supabaseUrl.includes('your-project-id') || supabaseUrl.includes('placeholder');
+
+export const supabase = createClient(
+  isMock ? 'https://placeholder.supabase.co' : supabaseUrl,
+  isMock ? 'placeholder-anon-key' : supabaseAnonKey
+);
+
+// ==========================================
+// High-Fidelity Mock Database Engine (Offline Mode)
+// ==========================================
+
+export interface Store {
+  id: string;
+  name: string;
+  subdomain: string;
+  logo_text: string;
+  primary_color: string;
+  secondary_color: string;
+  bg_color: string;
+  text_color: string;
+  btn_color: string;
+  layout: string;
+  description: string;
+}
+
+export interface Product {
+  id: string;
+  store_id: string;
+  name: string;
+  price: number;
+  category: string;
+  description: string;
+  stock: number;
+  image: string;
+  image_url?: string;
+}
+
+export interface Order {
+  id: string;
+  store_id: string;
+  customer_name: string;
+  customer_email: string;
+  total: number;
+  status: 'Pending' | 'Shipped' | 'Delivered';
+  shipping_address: string;
+  created_at: string;
+}
+
+export interface Integration {
+  id: string;
+  store_id: string;
+  name: string;
+  type: string;
+  status: 'Active' | 'Inactive';
+  config: Record<string, string>;
+}
+
+export interface CompetitorPricing {
+  id: string;
+  product_id: string;
+  competitor_name: string;
+  competitor_url: string;
+  price: number;
+  is_active: boolean;
+}
+
+// Seed Mock Data
+const MOCK_STORES: Store[] = [
+  {
+    id: 'store-1',
+    name: 'Aura Artisans',
+    subdomain: 'aura',
+    logo_text: '🏺',
+    description: 'Handmade ceramic pottery, stoneware, and textiles designed for the slow-living home.',
+    primary_color: '#8b5cf6',
+    secondary_color: '#ec4899',
+    bg_color: '#ffffff',
+    text_color: '#1f2937',
+    btn_color: '#8b5cf6',
+    layout: 'grid'
+  },
+  {
+    id: 'store-2',
+    name: 'Zenith Devices',
+    subdomain: 'zenith',
+    logo_text: '💻',
+    description: 'Minimalist aluminum stands, mechanical keyboards, and studio audio gear for modern desk setups.',
+    primary_color: '#1f2937',
+    secondary_color: '#6b7280',
+    bg_color: '#ffffff',
+    text_color: '#111827',
+    btn_color: '#1f2937',
+    layout: 'grid'
+  }
+];
+
+const MOCK_PRODUCTS: Product[] = [
+  {
+    id: 'p1',
+    store_id: 'store-1',
+    name: 'Speckled Ceramic Mug',
+    price: 24.00,
+    category: 'Beverages',
+    description: 'Wheel-thrown speckled clay mug finished with a white matte food-safe glaze.',
+    stock: 12,
+    image: '☕'
+  },
+  {
+    id: 'p2',
+    store_id: 'store-1',
+    name: 'Merino Wool Throw',
+    price: 89.00,
+    category: 'Apparel',
+    description: 'Woven from organic merino wool in a minimalist neutral plaid print. Incredibly soft and warm.',
+    stock: 8,
+    image: '🧥'
+  },
+  {
+    id: 'p3',
+    store_id: 'store-1',
+    name: 'Custom Mechanical Keyboard',
+    price: 189.00,
+    category: 'Electronics',
+    description: '75% form factor keyboard featuring custom-lubed linear switches, PBT keycaps, and brass dampener.',
+    stock: 5,
+    image: '💻'
+  }
+];
+
+const MOCK_ORDERS: Order[] = [
+  {
+    id: 'ord-1',
+    store_id: 'store-1',
+    customer_name: 'Alex Rivers',
+    customer_email: 'alex.rivers@gmail.com',
+    total: 48.00,
+    status: 'Delivered',
+    shipping_address: '456 Pine St, Seattle, WA',
+    created_at: new Date(Date.now() - 172800000).toISOString()
+  },
+  {
+    id: 'ord-2',
+    store_id: 'store-1',
+    customer_name: 'Samantha Green',
+    customer_email: 'sam.green@outlook.com',
+    total: 69.00,
+    status: 'Pending',
+    shipping_address: '789 Elm Ave, Portland, OR',
+    created_at: new Date(Date.now() - 14400000).toISOString()
+  }
+];
+
+const MOCK_INTEGRATIONS: Integration[] = [
+  {
+    id: 'int-1',
+    store_id: 'store-1',
+    name: 'Stripe Gateway',
+    type: 'payment',
+    status: 'Active',
+    config: { publicKey: 'pk_test_...', mode: 'Live' }
+  },
+  {
+    id: 'int-2',
+    store_id: 'store-1',
+    name: 'Website Web Scraper',
+    type: 'scraper',
+    status: 'Inactive',
+    config: { feedUrl: 'https://mock-shop.com/catalog.json' }
+  },
+  {
+    id: 'int-3',
+    store_id: 'store-1',
+    name: 'eBay Platform',
+    type: 'ebay',
+    status: 'Inactive',
+    config: { sellerId: 'ebay_seller_123', region: 'UK' }
+  },
+  {
+    id: 'int-4',
+    store_id: 'store-1',
+    name: 'Uber Eats',
+    type: 'food_delivery',
+    status: 'Inactive',
+    config: { restaurantId: 'uber_rest_99', webhookUrl: 'https://api.millersaashub.io/uber' }
+  },
+  {
+    id: 'int-5',
+    store_id: 'store-1',
+    name: 'Just Eat',
+    type: 'food_delivery',
+    status: 'Inactive',
+    config: { restaurantId: 'justeat_rest_77', webhookUrl: 'https://api.millersaashub.io/justeat' }
+  },
+  {
+    id: 'int-6',
+    store_id: 'store-1',
+    name: 'Amazon Connector',
+    type: 'amazon',
+    status: 'Inactive',
+    config: { sellerAccessId: 'aws_seller_amzn', mode: 'FBA' }
+  },
+  {
+    id: 'int-7',
+    store_id: 'store-1',
+    name: 'Alibaba Importer',
+    type: 'alibaba',
+    status: 'Inactive',
+    config: { supplierId: 'ali_supp_888', apiKey: 'ali_key_••••••••' }
+  },
+  {
+    id: 'int-8',
+    store_id: 'store-1',
+    name: 'Logistics Connector',
+    type: 'logistics',
+    status: 'Inactive',
+    config: { apiSecret: 'log_sec_••••••••', originPostcode: 'EC1A 1BB' }
+  }
+];
+
+const MOCK_COMPETITOR_PRICING: CompetitorPricing[] = [
+  {
+    id: 'cp-1',
+    product_id: 'p1', // Speckled Ceramic Mug ($24.00)
+    competitor_name: 'Amazon',
+    competitor_url: 'https://amazon.com/dp/B08XWWZZ',
+    price: 22.50,
+    is_active: true
+  },
+  {
+    id: 'cp-2',
+    product_id: 'p1',
+    competitor_name: 'Etsy Seller',
+    competitor_url: 'https://etsy.com/listing/988223',
+    price: 26.00,
+    is_active: true
+  },
+  {
+    id: 'cp-3',
+    product_id: 'p2', // Merino Wool Throw ($89.00)
+    competitor_name: 'Target',
+    competitor_url: 'https://target.com/p/87823',
+    price: 95.00,
+    is_active: true
+  }
+];
+
+// Helper database manager (dynamic local storage)
+const getLocalStorageData = <T>(key: string, initialData: T[]): T[] => {
+  if (typeof window === 'undefined') return initialData;
+  const data = localStorage.getItem(key);
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {
+      // Fallback
+    }
+  }
+  try {
+    localStorage.setItem(key, JSON.stringify(initialData));
+  } catch (e) {
+    console.warn("Storage quota exceeded during initialization:", e);
+  }
+  return initialData;
+};
+
+const setLocalStorageData = <T>(key: string, data: T[]) => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.warn("Storage quota exceeded. Unable to save updates to local storage:", e);
+    }
+  }
+};
+
+export const db = {
+  getStores: async (): Promise<Store[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('stores').select('*');
+      if (!error && data) return data as Store[];
+    }
+    const result = getLocalStorageData('db_stores', MOCK_STORES);
+    if (result.length === 0) {
+      setLocalStorageData('db_stores', MOCK_STORES);
+      return MOCK_STORES;
+    }
+    return result;
+  },
+
+  createStore: async (store: Omit<Store, 'id'>): Promise<Store> => {
+    const newStore: Store = { ...store, id: `store-${Date.now()}` };
+    if (!isMock) {
+      const { data, error } = await supabase.from('stores').insert([store]).select().single();
+      if (!error && data) return data as Store;
+    }
+    const current = getLocalStorageData('db_stores', MOCK_STORES);
+    const updated = [...current, newStore];
+    setLocalStorageData('db_stores', updated);
+    return newStore;
+  },
+
+  getProducts: async (storeId: string): Promise<Product[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId);
+      if (!error && data) return data as Product[];
+    }
+    const all = getLocalStorageData('db_products', MOCK_PRODUCTS);
+    return all.filter(p => p.store_id === storeId);
+  },
+
+  addProduct: async (product: Omit<Product, 'id'>): Promise<Product> => {
+    const newProduct: Product = { ...product, id: `prod-${Date.now()}` };
+    if (!isMock) {
+      const { data, error } = await supabase.from('products').insert([product]).select().single();
+      if (!error && data) return data as Product;
+    }
+    const all = getLocalStorageData('db_products', MOCK_PRODUCTS);
+    const updated = [...all, newProduct];
+    setLocalStorageData('db_products', updated);
+    return newProduct;
+  },
+
+  updateProduct: async (productId: string, updates: Partial<Omit<Product, 'id' | 'store_id'>>): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('products').update(updates).eq('id', productId);
+      if (!error) return true;
+    }
+    const all = getLocalStorageData('db_products', MOCK_PRODUCTS);
+    const updated = all.map(p => p.id === productId ? { ...p, ...updates } : p);
+    setLocalStorageData('db_products', updated);
+    return true;
+  },
+
+  deleteProduct: async (productId: string): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (!error) return true;
+    }
+    const all = getLocalStorageData('db_products', MOCK_PRODUCTS);
+    const updated = all.filter(p => p.id !== productId);
+    setLocalStorageData('db_products', updated);
+    return true;
+  },
+
+  getOrders: async (storeId: string): Promise<Order[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('orders').select('*').eq('store_id', storeId);
+      if (!error && data) return data as Order[];
+    }
+    const all = getLocalStorageData('db_orders', MOCK_ORDERS);
+    return all.filter(o => o.store_id === storeId);
+  },
+
+  updateOrderStatus: async (orderId: string, status: Order['status']): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+      if (!error) return true;
+    }
+    const all = getLocalStorageData('db_orders', MOCK_ORDERS);
+    const updated = all.map(o => o.id === orderId ? { ...o, status } : o);
+    setLocalStorageData('db_orders', updated);
+    return true;
+  },
+
+  getIntegrations: async (storeId: string): Promise<Integration[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('integrations').select('*').eq('store_id', storeId);
+      if (!error && data) return data as Integration[];
+    }
+    const all = getLocalStorageData('db_integrations_v2', MOCK_INTEGRATIONS);
+    return all.filter(i => i.store_id === storeId);
+  },
+
+  toggleIntegration: async (integrationId: string, status: Integration['status']): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('integrations').update({ status }).eq('id', integrationId);
+      if (!error) return true;
+    }
+    const all = getLocalStorageData('db_integrations_v2', MOCK_INTEGRATIONS);
+    const updated = all.map(i => i.id === integrationId ? { ...i, status } : i);
+    setLocalStorageData('db_integrations_v2', updated);
+    return true;
+  },
+
+  updateIntegrationConfig: async (integrationId: string, config: Record<string, string>): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('integrations').update({ config }).eq('id', integrationId);
+      if (!error) return true;
+    }
+    const all = getLocalStorageData('db_integrations_v2', MOCK_INTEGRATIONS);
+    const updated = all.map(i => i.id === integrationId ? { ...i, config } : i);
+    setLocalStorageData('db_integrations_v2', updated);
+    return true;
+  },
+
+  getCompetitorPrices: async (productId: string): Promise<CompetitorPricing[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('competitor_pricing').select('*').eq('product_id', productId);
+      if (!error && data) return data as CompetitorPricing[];
+    }
+    const all = getLocalStorageData('db_competitor_pricing', MOCK_COMPETITOR_PRICING);
+    return all.filter(cp => cp.product_id === productId);
+  },
+
+  addCompetitorPrice: async (pricing: Omit<CompetitorPricing, 'id'>): Promise<CompetitorPricing> => {
+    const newPrice: CompetitorPricing = { ...pricing, id: `cp-${Date.now()}` };
+    if (!isMock) {
+      const { data, error } = await supabase.from('competitor_pricing').insert([pricing]).select().single();
+      if (!error && data) return data as CompetitorPricing;
+    }
+    const all = getLocalStorageData('db_competitor_pricing', MOCK_COMPETITOR_PRICING);
+    const updated = [...all, newPrice];
+    setLocalStorageData('db_competitor_pricing', updated);
+    return newPrice;
+  },
+
+  triggerCompetitorScraper: async (productId: string, competitorName: string, competitorUrl: string): Promise<CompetitorPricing> => {
+    if (!isMock) {
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/competitor-scraper`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          },
+          body: JSON.stringify({ product_id: productId, competitor_name: competitorName, url: competitorUrl })
+        });
+        const result = await response.json();
+        if (result.success && result.data) {
+          return result.data as CompetitorPricing;
+        }
+      } catch (err) {
+        console.error("Failed triggering live scraper, using mock fallback:", err);
+      }
+    }
+    
+    // Fallback: Mock crawler logic (simulates Deno Edge Function response delay)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const randomPrice = Math.round((15 + Math.random() * 85) * 100) / 100;
+    
+    return db.addCompetitorPrice({
+      product_id: productId,
+      competitor_name: competitorName,
+      competitor_url: competitorUrl,
+      price: randomPrice,
+      is_active: true
+    });
+  }
+};
