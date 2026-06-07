@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { getLandingSites, getAgentStatuses, readBusinessProfile, AgentStatus, LandingSite } from '../../../lib/millerEcosystem';
 
 /* ─── Types ─────────────────────────────────────────────── */
 type LeadSource   = 'whatsapp'|'landing_page'|'social'|'platform'|'referral'|'manual';
@@ -135,12 +136,20 @@ export default function LeadsPage() {
   const [importCount, setImportCount] = useState(0);
   const [showImportBanner, setShowImportBanner] = useState(false);
   const [nurtureForm, setNurtureForm] = useState<{leadId:string; channel:NurtureMsg['channel']; content:string}|null>(null);
+  // Ecosystem state
+  const [landingSites, setLandingSites] = useState<LandingSite[]>([]);
+  const [agentStatuses, setAgentStatuses] = useState<AgentStatus[]>([]);
+  const [bizProfile, setBizProfile] = useState<{ businessName?: string }>({});
 
   useEffect(() => {
     setLeads(loadLeads());
     // check WA drafts for importable leads
     const drafts = loadWADrafts().filter(d => !d.processed);
     setImportCount(drafts.length);
+    // Ecosystem: load connected data
+    setLandingSites(getLandingSites());
+    setAgentStatuses(getAgentStatuses());
+    setBizProfile(readBusinessProfile());
   }, []);
 
   const persist = useCallback((next: Lead[]) => {
@@ -245,10 +254,31 @@ export default function LeadsPage() {
               📥 Import {importCount} WA Lead{importCount > 1 ? 's' : ''}
             </button>
           )}
-          <button onClick={() => { setEditLead(blankLead()); setShowAdd(true); }} style={btnStyle('var(--saas-primary)')}>
+          <button onClick={() => { const b = blankLead(); setEditLead({ ...b, businessUnit: bizProfile.businessName || '' }); setShowAdd(true); }} style={btnStyle('var(--saas-primary)')}>
             + Add Lead
           </button>
         </div>
+      </div>
+
+      {/* ── Ecosystem Context Strip ───────────────────────── */}
+      <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', padding:'0.65rem 0.9rem', background:'rgba(108,99,255,0.06)', border:'1px solid rgba(108,99,255,0.18)', borderRadius:10, alignItems:'center' }}>
+        <span style={{ fontSize:'0.72rem', color:'var(--saas-primary)', fontWeight:700, marginRight:4 }}>⚡ Ecosystem</span>
+        {bizProfile.businessName && (
+          <EcoBadge label={`🏢 ${bizProfile.businessName}`} color="#818cf8" />
+        )}
+        {landingSites.length > 0 ? (
+          <EcoBadge label={`🌐 ${landingSites.length} landing site${landingSites.length > 1 ? 's' : ''}`} color="#3B82F6" href="/dashboard/landing-builder" />
+        ) : (
+          <EcoBadge label="🌐 No landing pages yet" color="#6B7280" href="/dashboard/landing-builder" />
+        )}
+        {agentStatuses.filter(a => a.enabled).length > 0 ? (
+          <EcoBadge label={`🤖 ${agentStatuses.filter(a => a.enabled).length} agents active`} color="#10B981" href="/dashboard/social-accounts" />
+        ) : (
+          <EcoBadge label="🤖 No agents active" color="#6B7280" href="/dashboard/social-accounts" />
+        )}
+        {leads.filter(l => l.source === 'social').length > 0 && (
+          <EcoBadge label={`📱 ${leads.filter(l => l.source === 'social').length} from social agents`} color="#EC4899" />
+        )}
       </div>
 
       {/* Import banner */}
@@ -363,7 +393,7 @@ export default function LeadsPage() {
       {/* ── Add / Edit Modal ───────────────────────────────── */}
       {showAdd && editLead && (
         <Modal title={leads.find(l=>l.id===editLead.id) ? 'Edit Lead' : 'Add Lead'} onClose={() => { setShowAdd(false); setEditLead(null); }}>
-          <LeadForm lead={editLead} onChange={setEditLead} onSave={saveLead} onCancel={() => { setShowAdd(false); setEditLead(null); }} />
+          <LeadForm lead={editLead} onChange={setEditLead} onSave={saveLead} onCancel={() => { setShowAdd(false); setEditLead(null); }} sites={landingSites} />
         </Modal>
       )}
 
@@ -550,11 +580,12 @@ function LeadCard({ lead, onClick, onMove, onEdit, onDelete }: {
 }
 
 /* ─── Lead Form ───────────────────────────────────────────── */
-function LeadForm({ lead, onChange, onSave, onCancel }: {
+function LeadForm({ lead, onChange, onSave, onCancel, sites }: {
   lead: Lead;
   onChange: (l: Lead) => void;
   onSave: (l: Lead) => void;
   onCancel: () => void;
+  sites?: LandingSite[];
 }) {
   const set = (field: keyof Lead, val: unknown) => onChange({ ...lead, [field]: val });
   const tagStr = lead.tags.join(', ');
@@ -582,11 +613,22 @@ function LeadForm({ lead, onChange, onSave, onCancel }: {
         </div>
         <div>
           <label style={labelStyle}>Source</label>
-          <select value={lead.source} onChange={e => set('source', e.target.value)} style={inputStyle}>
+          <select value={lead.source} onChange={e => {
+            set('source', e.target.value);
+            // Auto-clear sourceName when source changes
+            if (e.target.value !== 'landing_page') set('sourceName', '');
+          }} style={inputStyle}>
             {(Object.entries(SOURCE_LABELS) as [LeadSource, string][]).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
+          {lead.source === 'landing_page' && sites && sites.length > 0 && (
+            <select value={lead.sourceName ?? ''} onChange={e => set('sourceName', e.target.value)}
+              style={{ ...inputStyle, marginTop: 4 }}>
+              <option value="">— Select landing page —</option>
+              {sites.map(s => <option key={s.id} value={s.businessName}>{s.businessName}{s.published ? ' ✓' : ' (draft)'}</option>)}
+            </select>
+          )}
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem' }}>
@@ -686,6 +728,18 @@ function StatusPill({ status }: { status: LeadStatus }) {
       {col?.label ?? status}
     </span>
   );
+}
+
+/* ─── EcoBadge ───────────────────────────────────────────── */
+function EcoBadge({ label, color, href }: { label: string; color: string; href?: string }) {
+  const style: React.CSSProperties = {
+    background: `${color}18`, color, border: `1px solid ${color}35`,
+    borderRadius: 20, padding: '2px 10px', fontSize: '0.7rem', fontWeight: 600,
+    textDecoration: 'none', cursor: href ? 'pointer' : 'default', whiteSpace: 'nowrap',
+  };
+  return href
+    ? <a href={href} style={style}>{label}</a>
+    : <span style={style}>{label}</span>;
 }
 
 /* ─── Style constants ────────────────────────────────────── */

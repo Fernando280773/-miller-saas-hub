@@ -1030,8 +1030,16 @@ export default function LandingBuilderPage() {
                       <span style={{fontWeight:700,fontSize:'.88rem',flex:1}}>{site.businessName}</span>
                       {activeSiteId===site.id&&<span style={{fontSize:'.65rem',fontWeight:800,color:'#6366f1',background:'rgba(99,102,241,.15)',border:'1px solid rgba(99,102,241,.25)',borderRadius:8,padding:'1px 6px'}}>Active</span>}
                     </div>
-                    <div style={{fontSize:'.7rem',color:'var(--saas-text-muted)',marginBottom:'0.75rem'}}>
-                      Updated {new Date(site.updatedAt).toLocaleDateString()}
+                    <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',marginBottom:6}}>
+                      <span style={{fontSize:'.68rem',color:'var(--saas-text-muted)'}}>Updated {new Date(site.updatedAt).toLocaleDateString()}</span>
+                      {(()=>{
+                        try{
+                          const allLeads:Array<{source:string;sourceName?:string}>=JSON.parse(localStorage.getItem('miller_leads_v1')||'[]');
+                          const cnt=allLeads.filter(l=>l.source==='landing_page'&&l.sourceName?.toLowerCase()===site.businessName.toLowerCase()).length;
+                          return cnt>0?<span style={{fontSize:'.68rem',color:'#10b981',fontWeight:700}}>🎯 {cnt} lead{cnt>1?'s':''}</span>:null;
+                        }catch{return null;}
+                      })()}
+                      {site.published&&<span style={{fontSize:'.65rem',color:'#10b981',fontWeight:700}}>● Live</span>}
                     </div>
                     <div style={{display:'flex',gap:6}}>
                       <button onClick={()=>loadSite(site)} style={{flex:1,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:5,padding:'5px 10px',borderRadius:7,cursor:'pointer',background:'rgba(99,102,241,.15)',color:'#818cf8',border:'1px solid rgba(99,102,241,.2)',fontSize:'.75rem',fontWeight:700}}>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store } from '../../../lib/supabaseClient';
+import { createLeadFromAgent, addLeadToPipeline, countAgentLeads, readBusinessProfile } from '../../../lib/millerEcosystem';
 import {
   Eye, Send, TrendingUp, Bell, FileText,
   Power, PlayCircle, CheckCircle, XCircle, Clock,
@@ -451,9 +452,11 @@ function ModeToggle({ mode, onChange }: { mode: AgentMode; onChange: (m: AgentMo
 function QueueCard({
   item,
   onResolve,
+  onLeadCreate,
 }: {
   item: QueueItem;
   onResolve: (id: string) => void;
+  onLeadCreate?: (item: QueueItem) => void;
 }) {
   const [draftText, setDraftText] = useState(item.draft || '');
   const [codeInput, setCodeInput] = useState('');
@@ -545,23 +548,41 @@ function QueueCard({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {item.type === 'review' || item.type === 'dm' ? (
-          <button
-            onClick={handleAction}
-            disabled={sending}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '6px 14px', borderRadius: 7, cursor: 'pointer',
-              background: 'rgba(99,102,241,0.18)', color: '#818cf8',
-              border: '1px solid rgba(99,102,241,0.3)',
-              fontSize: '0.78rem', fontWeight: 600,
-            }}
-          >
-            <Send size={12} />
-            {sending ? 'Sending...' : 'Send Reply'}
-          </button>
-        ) : item.type === 'post_approval' ? (
+          <>
+            <button
+              onClick={handleAction}
+              disabled={sending}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 14px', borderRadius: 7, cursor: 'pointer',
+                background: 'rgba(99,102,241,0.18)', color: '#818cf8',
+                border: '1px solid rgba(99,102,241,0.3)',
+                fontSize: '0.78rem', fontWeight: 600,
+              }}
+            >
+              <Send size={12} />
+              {sending ? 'Sending...' : 'Send Reply'}
+            </button>
+            {item.type === 'dm' && onLeadCreate && (
+              <button
+                onClick={() => onLeadCreate(item)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '6px 12px', borderRadius: 7, cursor: 'pointer',
+                  background: 'rgba(16,185,129,0.15)', color: '#10b981',
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  fontSize: '0.75rem', fontWeight: 600,
+                }}
+              >
+                🎯 → Lead Pipeline
+              </button>
+            )}
+          </>
+        ) : null}
+
+        {item.type === 'post_approval' ? (
           <button
             onClick={handleAction}
             disabled={sending}
@@ -937,6 +958,8 @@ export default function SocialAccountsPage() {
   const [queue, setQueue]       = useState<QueueItem[]>([]);
   const [log, setLog]           = useState<LogEntry[]>([]);
   const [logOpen, setLogOpen]   = useState(false);
+  const [leadCount, setLeadCount] = useState(0);
+  const [bizName, setBizName]   = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -952,6 +975,9 @@ export default function SocialAccountsPage() {
       setAgents(loadAgents());
       setQueue(loadQueue());
       setLog(loadLog());
+      setLeadCount(countAgentLeads());
+      const biz = readBusinessProfile();
+      if (biz.businessName) setBizName(biz.businessName);
       setLoading(false);
     };
     load();
@@ -996,7 +1022,7 @@ export default function SocialAccountsPage() {
       const newQItems: QueueItem[] = humanItems.map((e, i) => ({
         id: `q-${Date.now()}-${i}`,
         platform: e.platform,
-        type: 'code' as QueueType,
+        type: id === 'reply' ? 'dm' : 'code' as QueueType,
         title: `Agent paused — human needed`,
         body: e.action,
         createdAt: now,
@@ -1007,6 +1033,29 @@ export default function SocialAccountsPage() {
         localStorage.setItem(QUEUE_KEY, JSON.stringify(next));
         return next;
       });
+    }
+
+    // ── Ecosystem: auto-create leads from agent actions ──
+    const AGENT_LEAD_NAMES: Record<string, string[]> = {
+      reply:   ['Sarah K.','James O.','Maria L.','Priya S.','Tom B.'],
+      growth:  ['Aisha N.','Luke M.','Fatima R.','Dan C.','Yemi A.'],
+      monitor: ['Rachel T.','Omar F.','Nina W.','Chris P.','Jade E.'],
+      alert:   ['Hot Prospect','Urgent Enquiry'],
+    };
+    const successActions = newEntries.filter(e => e.result === 'success');
+    if (['reply','growth','monitor','alert'].includes(id) && successActions.length > 0) {
+      const namePool = AGENT_LEAD_NAMES[id] || [];
+      const count = Math.min(successActions.length, 2);
+      for (let i = 0; i < count; i++) {
+        const a = successActions[i];
+        createLeadFromAgent({
+          name: namePool[Math.floor(Math.random() * namePool.length)] || 'Social Lead',
+          platform: a.platform.split('+')[0].trim(),
+          agentId: id,
+          note: a.action,
+        });
+      }
+      setLeadCount(countAgentLeads());
     }
 
     setAgents(prev => {
@@ -1027,6 +1076,26 @@ export default function SocialAccountsPage() {
       return next;
     });
   }, []);
+
+  const handleLeadCreate = useCallback((item: QueueItem) => {
+    addLeadToPipeline({
+      name: `DM — ${item.platform}`,
+      contact: '',
+      contactType: item.platform === 'WhatsApp' ? 'whatsapp' : 'phone',
+      source: 'social',
+      sourceName: item.platform,
+      score: 'warm',
+      status: 'new',
+      businessUnit: bizName,
+      notes: item.body,
+      tags: ['dm', 'social', item.platform.toLowerCase()],
+      capturedAt: item.createdAt,
+      nurtureSent: 0,
+      nurtureMessages: [],
+    });
+    setLeadCount(c => c + 1);
+    resolveQueue(item.id);
+  }, [bizName, resolveQueue]);
 
   const connectedCount  = Object.values(accounts).filter(a => a.status === 'connected').length;
   const pendingQueue    = queue.filter(q => !q.resolved);
@@ -1081,6 +1150,8 @@ export default function SocialAccountsPage() {
               { label: `${connectedCount}/${PLATFORMS.length} accounts connected`, color: '#10b981' },
               { label: `${enabledAgents}/${agents.length} agents active`, color: '#6366f1' },
               { label: `${pendingQueue.length} items in human queue`, color: pendingQueue.length > 0 ? '#f59e0b' : '#6b7280' },
+              { label: `🎯 ${leadCount} leads in pipeline`, color: leadCount > 0 ? '#10b981' : '#6b7280' },
+              ...(bizName ? [{ label: `🏢 ${bizName}`, color: '#818cf8' }] : []),
             ].map(p => (
               <span key={p.label} style={{
                 fontSize: '0.75rem', fontWeight: 700, padding: '4px 12px', borderRadius: 20,
@@ -1143,7 +1214,7 @@ export default function SocialAccountsPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {pendingQueue.map(item => (
-                <QueueCard key={item.id} item={item} onResolve={resolveQueue} />
+                <QueueCard key={item.id} item={item} onResolve={resolveQueue} onLeadCreate={handleLeadCreate} />
               ))}
             </div>
           )}
