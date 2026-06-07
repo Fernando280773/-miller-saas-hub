@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import DashboardSidebar from '../../../components/DashboardSidebar';
+import { db, Store } from '../../../lib/supabaseClient';
 import { getLandingSites, getAgentStatuses, readBusinessProfile, AgentStatus, LandingSite } from '../../../lib/millerEcosystem';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -125,6 +127,7 @@ function blankLead(): Lead {
 
 /* ─── Main Component ─────────────────────────────────────── */
 export default function LeadsPage() {
+  const [store, setStore] = useState<Store | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activeStatus, setActiveStatus] = useState<LeadStatus|'all'>('all');
   const [activeScore, setActiveScore] = useState<LeadScore|'all'>('all');
@@ -142,6 +145,17 @@ export default function LeadsPage() {
   const [bizProfile, setBizProfile] = useState<{ businessName?: string }>({});
 
   useEffect(() => {
+    const load = async () => {
+      let id = 'store-1';
+      if (typeof window !== 'undefined') {
+        const s = localStorage.getItem('active_store_id');
+        if (s) id = s;
+      }
+      const stores = await db.getStores();
+      const cur = stores.find(s => s.id === id) || stores[0];
+      if (cur) setStore(cur);
+    };
+    load();
     setLeads(loadLeads());
     // check WA drafts for importable leads
     const drafts = loadWADrafts().filter(d => !d.processed);
@@ -238,7 +252,10 @@ export default function LeadsPage() {
   const pipeline = leads.filter(l => !['won','lost'].includes(l.status)).length;
 
   return (
-    <div style={{ padding:'1.5rem', maxWidth:1400, margin:'0 auto' }}>
+    <div className="dashboard-layout">
+      <DashboardSidebar storeName={store?.name} storeLogo={store?.logo_text} />
+      <main className="dashboard-content">
+      <div style={{ padding:'1.5rem', maxWidth:1400, margin:'0 auto' }}>
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem', marginBottom:'1.5rem' }}>
@@ -526,6 +543,8 @@ export default function LeadsPage() {
           </div>
         </div>
       )}
+    </div>
+    </main>
     </div>
   );
 }
