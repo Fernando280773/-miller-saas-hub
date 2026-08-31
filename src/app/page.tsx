@@ -7,13 +7,7 @@ import {
   Layers, 
   Plus, 
   ArrowRight, 
-  TrendingUp, 
-  DollarSign, 
-  ShoppingBag, 
-  Users, 
-  CheckCircle,
-  ExternalLink,
-  Info
+  CheckCircle
 } from 'lucide-react';
 
 export default function PlatformLanding() {

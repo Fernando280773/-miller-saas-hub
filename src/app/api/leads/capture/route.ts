@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
       notes,
       message,
       store_id,
-      source = 'landing_page',
       source_name,
       business_unit,
       // Honeypot fields (hidden in forms, bots fill them out)

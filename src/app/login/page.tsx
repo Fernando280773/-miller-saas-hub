@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Layers, Shield, Sparkles, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
+import { Layers, Shield, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { DEMO_USERS, setActiveUser, UserRole } from '@/lib/auth';
 

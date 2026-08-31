@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store, Product, CompetitorPricing } from '../../../lib/supabaseClient';
 import { 
-  DollarSign, 
   TrendingUp, 
   TrendingDown, 
   Sliders, 
@@ -13,8 +12,7 @@ import {
   AlertTriangle, 
   ExternalLink,
   ShieldAlert,
-  SlidersHorizontal,
-  ChevronRight
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface PricingRecommendation {
@@ -36,7 +34,6 @@ export default function CompetitorPricingPage() {
   const [addForm, setAddForm] = useState({ productId: '', competitorName: '', competitorUrl: '', price: '' });
 
   const loadStoreAndTelemetry = async () => {
-    setLoading(true);
     const allStores = await db.getStores();
     let currentStore = allStores[0];
     if (typeof window !== 'undefined') {
@@ -63,7 +60,10 @@ export default function CompetitorPricingPage() {
   };
 
   useEffect(() => {
-    loadStoreAndTelemetry();
+    // Defer so state updates run in a callback, not synchronously
+    // within the effect (react-hooks safe).
+    const timer = setTimeout(() => loadStoreAndTelemetry(), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleReprice = async (productId: string, newPrice: number) => {
@@ -80,6 +80,7 @@ export default function CompetitorPricingPage() {
 
   const triggerGlobalScrape = async () => {
     setSyncingAll(true);
+    setLoading(true);
     showToast("Triggering cloud scraper for all active feeds...");
     
     // Simulate scraping latency

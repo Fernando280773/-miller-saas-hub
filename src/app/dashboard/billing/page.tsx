@@ -6,16 +6,8 @@ import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import {
   CreditCard,
   CheckCircle,
-  Sparkles,
   Zap,
-  Shield,
-  ArrowRight,
-  Download,
-  Clock,
-  Layers,
-  AlertCircle,
-  ExternalLink,
-  ChevronRight
+  Download
 } from 'lucide-react';
 
 interface BillingInvoice {
@@ -47,26 +39,28 @@ export default function BillingPage() {
       if (typeof window !== 'undefined') {
         const s = localStorage.getItem('active_store_id');
         if (s) id = s;
-        const storedPlan = localStorage.getItem('miller_active_plan');
-        if (storedPlan) setActivePlan(storedPlan as 'starter' | 'growth' | 'agency');
       }
       const stores = await db.getStores();
       const cur = stores.find(s => s.id === id) || stores[0];
       if (cur) setStore(cur);
+
+      // Check URL query parameters for upgrade success (after await so
+      // state updates run asynchronously — react-hooks safe)
+      if (typeof window !== 'undefined') {
+        const storedPlan = localStorage.getItem('miller_active_plan');
+        if (storedPlan) setActivePlan(storedPlan as 'starter' | 'growth' | 'agency');
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('upgraded') === 'true') {
+          const upgradedPlan = (params.get('plan') as 'starter' | 'growth' | 'agency') || 'growth';
+          setActivePlan(upgradedPlan);
+          localStorage.setItem('miller_active_plan', upgradedPlan);
+          setToastMsg(`🎉 Success! Your subscription has been updated to the ${upgradedPlan.toUpperCase()} plan.`);
+          setTimeout(() => setToastMsg(null), 5000);
+        }
+      }
     };
     load();
-
-    // Check URL query parameters for upgrade success
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('upgraded') === 'true') {
-        const upgradedPlan = params.get('plan') as 'starter' | 'growth' | 'agency' || 'growth';
-        setActivePlan(upgradedPlan);
-        localStorage.setItem('miller_active_plan', upgradedPlan);
-        setToastMsg(`🎉 Success! Your subscription has been updated to the ${upgradedPlan.toUpperCase()} plan.`);
-        setTimeout(() => setToastMsg(null), 5000);
-      }
-    }
   }, []);
 
   const handleUpgrade = async (planId: 'starter' | 'growth' | 'agency') => {
@@ -90,7 +84,7 @@ export default function BillingPage() {
           
           // Prepend new invoice
           const newInv: BillingInvoice = {
-            id: `INV-2026-${Date.now().toString().slice(-4)}`,
+            id: `INV-2026-${String(invoices.length + 1).padStart(2, '0')}`,
             date: 'Today',
             amount: billingCycle === 'yearly' ? (planId === 'starter' ? '£290.00' : planId === 'growth' ? '£790.00' : '£1,990.00') : (planId === 'starter' ? '£29.00' : planId === 'growth' ? '£79.00' : '£199.00'),
             plan: `${planId.toUpperCase()} Tier (${billingCycle})`,

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store, Product, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
-import { Plus, Trash, Edit, Search, Tag, X, Check, Video, Upload, Image } from 'lucide-react';
+import { Plus, Trash, Edit, Search, Tag, X, Check, Video, Upload, Image as ImageIcon } from 'lucide-react';
 import CompetitorMonitor from '../../../components/CompetitorMonitor';
 import VideoThumb from '../../../components/VideoThumb';
 import VideoMaker from '../../../components/VideoMaker';
@@ -121,46 +121,7 @@ export default function ProductsPage() {
     setImageChanged(true);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new window.Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 120;
-          const MAX_HEIGHT = 120;
-          let width = img.width;
-          let height = img.height;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-            setProductImageUrl(compressedBase64);
-          }
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
- 
   useEffect(() => {
     const loadStoreAndProducts = async () => {
       setLoading(true);
@@ -625,7 +586,7 @@ export default function ProductsPage() {
                   {/* ── Product Image ── */}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Image size={13} style={{ color: 'var(--saas-primary)' }} />
+                      <ImageIcon size={13} style={{ color: 'var(--saas-primary)' }} />
                       Product Image <span style={{ fontSize: '0.68rem', color: 'var(--saas-text-muted)', fontWeight: 400 }}>(auto-enhanced · stored in browser)</span>
                     </label>
 
@@ -649,6 +610,7 @@ export default function ProductsPage() {
                       </button>
                     ) : (
                       <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000', maxHeight: 140, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- in-memory data-URL preview (not optimizable) */}
                         <img src={imagePreview} alt="preview" style={{ maxHeight: 140, maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
                         <button
                           type="button"

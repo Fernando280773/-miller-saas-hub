@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Video, Upload, FlipHorizontal, RotateCcw, Check, Loader, Mic, MicOff } from 'lucide-react';
+import { Video, Upload, FlipHorizontal, RotateCcw, Check, Loader } from 'lucide-react';
 import { checkVideoDuration } from '../lib/videoDb';
 
 type Mode  = 'record' | 'upload';
@@ -107,9 +107,18 @@ export default function VideoMaker({ onSave, onClose }: Props) {
   }, [facing]);
 
   useEffect(() => {
-    if (mode === 'record' && stage !== 'confirm') startCamera();
+    if (mode === 'record' && stage !== 'confirm') {
+      // Defer camera start so state updates run in a callback, not
+      // synchronously within the effect (react-hooks safe).
+      const timer = setTimeout(() => startCamera(), 0);
+      return () => {
+        clearTimeout(timer);
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        if (tickRef.current) clearInterval(tickRef.current);
+      };
+    }
     return () => {
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach(track => track.stop());
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [mode, facing]); // eslint-disable-line react-hooks/exhaustive-deps

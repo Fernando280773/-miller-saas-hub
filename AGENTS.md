@@ -13,24 +13,10 @@ Every new page under `/dashboard/*` MUST follow this exact pattern — no except
 
 ```tsx
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { useStore } from '../../../lib/useStore';
 
 export default function MyPage() {
-  const [store, setStore] = useState<Store | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      let id = 'store-1';
-      if (typeof window !== 'undefined') {
-        const s = localStorage.getItem('active_store_id');
-        if (s) id = s;
-      }
-      const stores = await db.getStores();
-      const cur = stores.find(s => s.id === id) || stores[0];
-      if (cur) setStore(cur);
-    };
-    load();
-  }, []);
+  const store = useStore();
 
   return (
     <div className="dashboard-layout">
@@ -42,6 +28,11 @@ export default function MyPage() {
   );
 }
 ```
+
+Use the shared `useStore()` hook from `src/lib/useStore.ts` — do NOT hand-roll
+`useState`+`useEffect` store loading in pages. The hook resolves
+'active_store_id' → DEFAULT_STORE_ID → first seeded store and keeps all state
+updates after an `await`, keeping the `react-hooks/set-state-in-effect` rule happy.
 
 **Mistake logged:** Lead Management page (`/dashboard/leads`) was built without sidebar wrapper — rendered outside dashboard layout. Fixed in commit 2487cf4. Never skip this pattern again.
 

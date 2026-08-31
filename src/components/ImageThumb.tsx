@@ -88,6 +88,7 @@ export default function ImageThumb({ productId, fallbackEmoji, size = 48 }: Prop
 
       {/* Image — fades in when loaded */}
       {src && (
+        /* eslint-disable-next-line @next/next/no-img-element -- IndexedDB blob-URL image (not optimizable) */
         <img
           src={src}
           alt="product"

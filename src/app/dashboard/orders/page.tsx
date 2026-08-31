@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store, Order, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
-import { ShoppingBag, Clock, CheckCircle, Truck, Check } from 'lucide-react';
+import { Clock, CheckCircle, Truck, Check } from 'lucide-react';
 
 export default function OrdersPage() {
   const [store, setStore] = useState<Store | null>(null);

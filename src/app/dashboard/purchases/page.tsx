@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store, DEFAULT_STORE_ID, supabase } from '../../../lib/supabaseClient';
-import { saveInvoiceImage, getInvoiceImage, deleteInvoiceImage } from '../../../lib/invoiceDb';
+import { saveInvoiceImage, deleteInvoiceImage } from '../../../lib/invoiceDb';
 import { playNotificationChime } from '../../../lib/audioChime';
 import {
   Plus, X, ChevronDown, ChevronUp, Eye, EyeOff, Save,
-  Upload, Camera, FileText, CheckCircle, Clock, AlertCircle,
-  Search, Filter, Trash2, ExternalLink, Image, Calendar,
-  TrendingUp, ShoppingBag, CreditCard, BarChart2
+  Upload, Camera, FileText, CheckCircle, AlertCircle,
+  Search, Trash2, ExternalLink, Calendar,
+  TrendingUp, ShoppingBag, BarChart2
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════
@@ -698,7 +698,10 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
               onClick={() => fileRef.current?.click()}
             >
               {imgPreview
-                ? <img src={imgPreview} alt="invoice" style={{ maxHeight:120, borderRadius:6, maxWidth:'100%' }}/>
+                ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- in-memory data-URL preview
+                    <img src={imgPreview} alt="invoice" style={{ maxHeight:120, borderRadius:6, maxWidth:'100%' }}/>
+                  )
                 : (
                   <div style={{ fontSize:'0.8rem', color:'var(--saas-text-muted)' }}>
                     <Upload size={20} style={{ display:'block', margin:'0 auto 0.4rem', opacity:0.5 }}/>
@@ -833,8 +836,8 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
 /* ═══════════════════════════════════════════
    INVOICE TABLE
 ═══════════════════════════════════════════ */
-function InvoiceTable({ invoices, period, customFrom, customTo, suppliers, onEdit, onDelete, onMarkPaid }:
-  { invoices: Invoice[]; period: TimePeriod; customFrom: string; customTo: string; suppliers: Supplier[]; onEdit:(i:Invoice)=>void; onDelete:(id:string)=>void; onMarkPaid:(id:string)=>void }) {
+function InvoiceTable({ invoices, period, customFrom, customTo, onEdit, onDelete, onMarkPaid }:
+  { invoices: Invoice[]; period: TimePeriod; customFrom: string; customTo: string; onEdit:(i:Invoice)=>void; onDelete:(id:string)=>void; onMarkPaid:(id:string)=>void }) {
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<SupplierCategory|'all'>('all');
@@ -1073,7 +1076,7 @@ function WhatsAppSection({
             borderRadius:10, padding:'0.85rem 1rem', marginBottom:'1.25rem',
             fontSize:'0.78rem', color:'#4ade80', lineHeight:1.6,
           }}>
-            <strong>📋 How it works:</strong> Set your business WhatsApp number below → register owners & managers → they take a photo of any invoice → send it to your business WhatsApp number → it appears here as a draft → you tap "Complete Invoice" to fill in the details.
+            <strong>📋 How it works:</strong> Set your business WhatsApp number below → register owners & managers → they take a photo of any invoice → send it to your business WhatsApp number → it appears here as a draft → you tap &quot;Complete Invoice&quot; to fill in the details.
           </div>
 
           {/* Business WhatsApp number */}
@@ -1675,7 +1678,7 @@ export default function PurchasesPage() {
 
           {Object.keys(groupedSuppliers).length===0 && (
             <div style={{ textAlign:'center', padding:'2rem', color:'var(--saas-text-muted)', fontSize:'0.85rem' }}>
-              No suppliers yet — click "Add Supplier" to get started
+              No suppliers yet — click &quot;Add Supplier&quot; to get started
             </div>
           )}
         </div>
@@ -1705,7 +1708,6 @@ export default function PurchasesPage() {
           </div>
           <InvoiceTable
             invoices={invoices} period={period} customFrom={customFrom} customTo={customTo}
-            suppliers={suppliers}
             onEdit={inv => { setEditInvoice(inv); setShowInvModal(true); }}
             onDelete={deleteInvoice}
             onMarkPaid={markPaid}

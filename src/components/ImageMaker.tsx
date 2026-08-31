@@ -13,7 +13,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { Upload, Camera, X, Check, RefreshCw, Image } from 'lucide-react';
+import { Upload, Camera, Check, RefreshCw, Image as ImageIcon } from 'lucide-react';
 
 interface Props {
   storeLogo: string;   // emoji shown in corner badge
@@ -218,7 +218,7 @@ export default function ImageMaker({ storeLogo, onSave, onClose }: Props) {
         {/* Header */}
         <div className="modal-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: '1rem' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.05rem', fontFamily: 'var(--font-display)', margin: 0 }}>
-            <Image size={18} style={{ color: 'var(--saas-primary)' }} />
+            <ImageIcon size={18} style={{ color: 'var(--saas-primary)' }} />
             Product Image Maker
           </h3>
           <button
@@ -355,6 +355,7 @@ export default function ImageMaker({ storeLogo, onSave, onClose }: Props) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 position: 'relative',
               }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- in-memory object-URL preview */}
                 <img
                   src={showBefore ? (originalSrc ?? processedSrc) : processedSrc}
                   alt="preview"

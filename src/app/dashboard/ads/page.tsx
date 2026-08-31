@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store } from '../../../lib/supabaseClient';
 import {
-  Eye, DollarSign, TrendingUp, TrendingDown,
-  Play, ThumbsUp, MessageCircle, Share2,
+  Eye, DollarSign, TrendingUp,
+  ThumbsUp, MessageCircle, Share2,
   RefreshCw, Filter, ExternalLink
 } from 'lucide-react';
 

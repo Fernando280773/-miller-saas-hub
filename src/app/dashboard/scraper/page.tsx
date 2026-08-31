@@ -66,7 +66,7 @@ export default function ScraperPage() {
   const [view, setView] = useState<ViewMode>('cards');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tab, setTab] = useState<PageTab>('scrape');
-  const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
+
   const [manual, setManual] = useState({ name: '', description: '', price: '', category: '', image: '' });
   const [manualRows, setManualRows] = useState<EditableRow[]>([]);
   const [imgUrl, setImgUrl] = useState('');
@@ -118,7 +118,7 @@ export default function ScraperPage() {
       const json = await res.json();
       if (!res.ok || json.error) {
         setError(json.error || 'Scrape failed.');
-        if (json.blocked) { setBlockedMsg(json.error); setTab('manual'); }
+        if (json.blocked) { setTab('manual'); }
       } else {
         setSource(json.source);
         saveRecent(target);
@@ -584,7 +584,7 @@ export default function ScraperPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {imgRows.map((row, i) => (
+                  {imgRows.map((row) => (
                     <div key={row._id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: row.imported ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${row.imported ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 'var(--radius-sm)' }}>
                       <input type="checkbox" checked={row.selected} onChange={() => setImgRows(prev => prev.map(r => r._id === row._id ? { ...r, selected: !r.selected } : r))} disabled={row.imported} />
                       <span style={{ fontSize: '1.2rem' }}>{guessEmoji(row.category)}</span>

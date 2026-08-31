@@ -5,12 +5,12 @@ import DashboardSidebar from '../../../components/DashboardSidebar';
 import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { createLeadFromAgent, addLeadToPipeline, countAgentLeads, readBusinessProfile } from '../../../lib/millerEcosystem';
 import {
-  Eye, Send, TrendingUp, Bell, FileText,
-  Power, PlayCircle, CheckCircle, XCircle, Clock,
+  Send,
+  PlayCircle, CheckCircle, XCircle, Clock,
   ChevronDown, ChevronUp, Eye as EyeIcon, EyeOff,
-  Save, ExternalLink, AlertTriangle, Inbox,
-  Zap, User, ThumbsUp, MessageCircle, Activity,
-  ToggleLeft, ToggleRight, RefreshCw
+  Save, ExternalLink, Inbox,
+  Zap, User, Activity,
+  ToggleLeft, ToggleRight
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════
@@ -365,12 +365,6 @@ const AG_KEY    = 'miller_agent_cfg_v1';
 const QUEUE_KEY = 'miller_human_queue_v1';
 const LOG_KEY   = 'miller_activity_log_v1';
 
-function loadAccounts(): Record<string, SocialAccount> {
-  try { const r = localStorage.getItem(SA_KEY); if (r) return JSON.parse(r); } catch { /**/ }
-  const d: Record<string, SocialAccount> = {};
-  PLATFORMS.forEach(p => { d[p.id] = { token: '', tokenExpiry: '', status: 'disconnected', mode: 'approve', notes: '' }; });
-  return d;
-}
 function loadAgents(): AgentCfg[] {
   try { const r = localStorage.getItem(AG_KEY); if (r) return JSON.parse(r); } catch { /**/ }
   return DEFAULT_AGENTS;

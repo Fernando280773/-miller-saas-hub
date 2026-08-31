@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import { db } from '@/lib/supabaseClient';
 import {
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Sparkles, Globe, Search, Plus, X, Check, Download,
   Edit2, Eye, Copy, Trash2, ExternalLink, RefreshCw,
-  Save, Layout, Rocket, Palette, Users, Target,
-  Building2, FileText, Image, Link2, AlertCircle,
+  Layout, Rocket, Palette,
+  FileText, Image as ImageIcon, Link2, AlertCircle,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════
@@ -78,7 +78,7 @@ function saveSites(s:SavedSite[]) {
    SOCIAL HUB READER
 ═══════════════════════════════════════ */
 function readHubData() {
-  let biz:Record<string,string>={}, links:Record<string,string>={}, done:string[]=[];
+  let biz:Record<string,string>={}; const links:Record<string,string>={}; const done:string[]=[];
   try {
     const bi=localStorage.getItem('miller_business_info_v1'); if(bi) biz=JSON.parse(bi);
     const sc=localStorage.getItem('miller_social_creds_v1');
@@ -124,9 +124,7 @@ function blankForm(biz:Record<string,string>, links:Record<string,string>):BizFo
 function generatePlan(form:BizForm, _competitors:Competitor[]):PlanSection[] {
   const svcs = form.services.filter(Boolean);
   const hasSocial = Object.keys(form.socialLinks).length>0;
-  const pageType = svcs.length>5?'multi-section':'1-page';
   const compGaps = _competitors.filter(c=>c.analysis).flatMap(c=>c.analysis!.gaps).slice(0,3);
-  const compOpps = _competitors.filter(c=>c.analysis).map(c=>c.analysis!.opportunity).filter(Boolean).slice(0,2);
 
   const base:PlanSection[] = [
     { id:'hero',    name:'Hero Section',     emoji:'🚀', approved:false, editing:false,
@@ -879,14 +877,20 @@ const MILA:Record<string,string[]> = {
 function MilaAgent({stage, thinking}:{stage:string;thinking:boolean}) {
   const [idx,setIdx]=useState(0);
   const [text,setText]=useState('');
-  const [typing,setTyping]=useState(false);
-  const msgs=MILA[stage]||[];
-  useEffect(()=>{setIdx(0);},[stage]);
+  const [typing,setTyping]=useState(true);
+  const msgs=useMemo(()=>MILA[stage]||[],[stage]);
+
+  // Typing effect — state updates only inside the async interval callback
   useEffect(()=>{
-    const m=msgs[idx]||''; setText(''); setTyping(true); let i=0;
-    const iv=setInterval(()=>{ i++; setText(m.slice(0,i)); if(i>=m.length){clearInterval(iv);setTyping(false);}},16);
+    const m=msgs[idx]||'';
+    let i=0;
+    const iv=setInterval(()=>{
+      i++;
+      setText(m.slice(0,i));
+      if(i>=m.length){clearInterval(iv);setTyping(false);}
+    },16);
     return ()=>clearInterval(iv);
-  },[idx,stage]);
+  },[idx,msgs]);
   return (
     <div style={{background:'linear-gradient(135deg,rgba(99,102,241,.1),rgba(16,185,129,.07))',border:'1px solid rgba(99,102,241,.25)',borderRadius:16,padding:'1.1rem',marginBottom:'1.5rem'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:'0.75rem'}}>
@@ -897,7 +901,7 @@ function MilaAgent({stage, thinking}:{stage:string;thinking:boolean}) {
             {thinking?'🔍 Analyzing competitors...':typing?'⌨️ Typing...':'✅ Ready to help'}
           </div>
         </div>
-        {msgs.length>1&&<button onClick={()=>setIdx(v=>Math.min(v+1,msgs.length-1))} disabled={idx>=msgs.length-1} style={{padding:'3px 10px',borderRadius:8,cursor:'pointer',background:'rgba(99,102,241,.15)',color:'#818cf8',border:'1px solid rgba(99,102,241,.2)',fontSize:'.7rem',opacity:idx>=msgs.length-1?.4:1}}>next tip →</button>}
+        {msgs.length>1&&<button onClick={()=>{setText('');setTyping(true);setIdx(v=>Math.min(v+1,msgs.length-1));}} disabled={idx>=msgs.length-1} style={{padding:'3px 10px',borderRadius:8,cursor:'pointer',background:'rgba(99,102,241,.15)',color:'#818cf8',border:'1px solid rgba(99,102,241,.2)',fontSize:'.7rem',opacity:idx>=msgs.length-1?.4:1}}>next tip →</button>}
       </div>
       <div style={{background:'rgba(0,0,0,.25)',borderRadius:10,padding:'.8rem 1rem',fontSize:'.83rem',lineHeight:1.65,minHeight:46,borderLeft:'3px solid #6366f1'}}>
         {text}{typing&&<span style={{opacity:.6}}>|</span>}
@@ -1193,7 +1197,7 @@ export default function LandingBuilderPage() {
           </div>
         )}
 
-        <MilaAgent stage={stage} thinking={milaThinking}/>
+        <MilaAgent key={stage} stage={stage} thinking={milaThinking}/>
         <StageBar stage={stage}/>
 
         {/* ══ WELCOME ══ */}
@@ -1482,7 +1486,7 @@ export default function LandingBuilderPage() {
                       <div style={{display:'flex',gap:12,marginBottom:'0.75rem',flexWrap:'wrap'}}>
                         <span style={{fontSize:'.72rem',background:'rgba(99,102,241,.12)',border:'1px solid rgba(99,102,241,.2)',borderRadius:7,padding:'2px 8px',color:'#818cf8'}}>🎨 Color tone: {comp.analysis.colorTone}</span>
                         <span style={{fontSize:'.72rem',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:7,padding:'2px 8px',color:'var(--saas-text-muted)'}}>📄 Sections: {comp.analysis.keySections.join(' → ')}</span>
-                        <span style={{fontSize:'.72rem',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:7,padding:'2px 8px',color:'var(--saas-text-muted)'}}>CTA: "{comp.analysis.cta}"</span>
+                        <span style={{fontSize:'.72rem',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:7,padding:'2px 8px',color:'var(--saas-text-muted)'}}>CTA: &quot;{comp.analysis.cta}&quot;</span>
                       </div>
                       {/* Row 2: strengths + gaps */}
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.65rem'}}>
@@ -1530,13 +1534,16 @@ export default function LandingBuilderPage() {
               {/* Logo input */}
               <div style={{background:'rgba(255,255,255,.02)',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'1.25rem'}}>
                 <div style={{fontWeight:700,fontSize:'.9rem',marginBottom:'1rem',display:'flex',alignItems:'center',gap:8}}>
-                  <Image size={14} style={{color:'#818cf8'}}/> Logo
+                  <ImageIcon size={14} style={{color:'#818cf8'}}/> Logo
                 </div>
 
                 {/* Current logo preview */}
                 <div style={{width:'100%',height:120,background:'rgba(99,102,241,.07)',border:'1px dashed rgba(99,102,241,.25)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'1rem',overflow:'hidden'}}>
                   {form.logoUrl
-                    ? <img src={form.logoUrl} alt="logo" style={{maxHeight:100,maxWidth:'90%',objectFit:'contain'}} onError={e=>(e.currentTarget.style.display='none')}/>
+                    ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- dynamic user-provided URL
+                        <img src={form.logoUrl} alt="logo" style={{maxHeight:100,maxWidth:'90%',objectFit:'contain'}} onError={e=>(e.currentTarget.style.display='none')}/>
+                      )
                     : <div style={{textAlign:'center',color:'var(--saas-text-muted)',fontSize:'.8rem'}}>
                         <div style={{fontSize:'2rem',marginBottom:6}}>🏢</div>
                         <div style={{fontWeight:700,fontSize:'1.1rem',color:'var(--saas-text)'}}>{form.businessName||'Your Business'}</div>
@@ -1699,7 +1706,7 @@ export default function LandingBuilderPage() {
             </div>
 
             <div style={{display:'flex',flexDirection:'column',gap:'0.75rem',marginBottom:'1.25rem'}}>
-              {plan.map((section,idx)=>(
+              {plan.map((section)=>(
                 <div key={section.id} style={{background:section.approved?'rgba(16,185,129,.06)':'rgba(255,255,255,.02)',border:`1px solid ${section.approved?'rgba(16,185,129,.25)':'rgba(255,255,255,.07)'}`,borderLeft:`3px solid ${section.approved?'#10b981':'#6366f1'}`,borderRadius:12,padding:'1rem 1.2rem'}}>
                   <div style={{display:'flex',alignItems:'center',gap:10}}>
                     <span style={{fontSize:'1.2rem'}}>{section.emoji}</span>

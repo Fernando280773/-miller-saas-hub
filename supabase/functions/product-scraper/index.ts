@@ -2,7 +2,6 @@
 // Serves Deno runtime for high-performance scraping and catalog ingestion
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,11 +24,9 @@ serve(async (req) => {
       )
     }
 
-    // Initialize Supabase Client using environment keys
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    
-    // In production, we create client instance:
+    // In production, initialize Supabase Client from env keys:
+    // const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    // const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     // const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Simulate scraping logic by loading products from target source

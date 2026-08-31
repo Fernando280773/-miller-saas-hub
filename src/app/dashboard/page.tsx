@@ -8,7 +8,6 @@ import {
   ShoppingBag, 
   Package, 
   Layers, 
-  TrendingUp, 
   Clock,
   CheckCircle,
   Truck

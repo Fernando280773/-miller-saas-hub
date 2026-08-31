@@ -10,14 +10,13 @@ export default function PublicLandingPage() {
   const rawSlug = params?.slug as string;
   const slug = rawSlug ? decodeURIComponent(rawSlug) : '';
 
-  const [loading, setLoading] = useState(true);
+  // Loading only matters once a slug exists; if there is no slug the
+  // not-found branch renders immediately (no synchronous setState in effect).
+  const [loading, setLoading] = useState<boolean>(() => !!slug);
   const [site, setSite] = useState<LandingSite | null>(null);
 
   useEffect(() => {
-    if (!slug) {
-      setLoading(false);
-      return;
-    }
+    if (!slug) return;
 
     const loadSite = async () => {
       try {

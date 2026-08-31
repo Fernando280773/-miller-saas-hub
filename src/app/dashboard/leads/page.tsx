@@ -43,28 +43,9 @@ interface NurtureMsg {
 
 /* ─── Storage ────────────────────────────────────────────── */
 const LEADS_KEY     = 'miller_leads_v1';
-const WA_DRAFTS_KEY = 'miller_wa_drafts_v1';
 
-interface WADraft {
-  id: string;
-  senderName: string;
-  phone: string;
-  note: string;
-  imageKey?: string;
-  receivedAt: string;
-  processed: boolean;
-}
-
-function loadLeads(): Lead[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LEADS_KEY) || '[]'); } catch { return []; }
-}
 function saveLeads(leads: Lead[]) {
   localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
-}
-function loadWADrafts(): WADraft[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(WA_DRAFTS_KEY) || '[]'); } catch { return []; }
 }
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
