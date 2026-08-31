@@ -20,7 +20,8 @@ import {
   Target,
   Shield,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  CreditCard
 } from 'lucide-react';
 import { getActiveUser, setActiveUser, logoutUser, DEMO_USERS, AuthUser, UserRole } from '@/lib/auth';
 
@@ -65,6 +66,7 @@ export default function DashboardSidebar({ storeName = "Aura Artisans", storeLog
     { name: 'Purchase Hub', href: '/dashboard/purchases', icon: Truck, minRole: 'staff' },
     { name: 'Landing Builder', href: '/dashboard/landing-builder', icon: Globe, minRole: 'manager' },
     { name: 'Lead Management', href: '/dashboard/leads', icon: Target, minRole: 'staff' },
+    { name: 'Billing & Plans', href: '/dashboard/billing', icon: CreditCard, minRole: 'owner' },
   ];
 
   const roleColors: Record<UserRole, { label: string; color: string; border: string }> = {
