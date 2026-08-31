@@ -108,3 +108,9 @@ We use Supabase PostgreSQL to drive tenant management. The tables include:
 The custom scraping backend is built in Deno TypeScript and resides in `supabase/functions/product-scraper/`:
 - **Simulates Scraping Catalogs**: Accepts target JSON or CSV feeds and parses products.
 - **Inventory Synchronization**: Writes or updates items directly into the Supabase `products` table for a specific store.
+
+---
+
+## 🚀 Version 2 Blueprint & Roadmap
+For the comprehensive production v2 blueprint, database migrations, Edge workers, WhatsApp webhook pipelines, and public landing page routing, see [ROADMAP_V2.md](file:///Users/workonly/e-commers-sass/ROADMAP_V2.md).
+

@@ -72,6 +72,88 @@ export interface CompetitorPricing {
   is_active: boolean;
 }
 
+export interface Lead {
+  id: string;
+  store_id: string;
+  name: string;
+  contact: string;
+  contact_type: 'whatsapp' | 'email' | 'phone';
+  source: 'whatsapp' | 'landing_page' | 'social' | 'platform' | 'referral' | 'manual';
+  source_name?: string;
+  score: 'hot' | 'warm' | 'cold';
+  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost';
+  business_unit?: string;
+  notes?: string;
+  tags?: string[];
+  estimated_value?: number;
+  next_action?: string;
+  next_action_date?: string;
+  last_contacted_at?: string;
+  nurture_sent?: number;
+  nurture_messages?: unknown[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LandingSite {
+  id: string;
+  store_id: string;
+  business_name: string;
+  slug?: string;
+  title?: string;
+  published: boolean;
+  html: string;
+  page_type?: string;
+  views_count?: number;
+  leads_count?: number;
+  custom_domain?: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AiAgentConfig {
+  id: string;
+  store_id: string;
+  agent_id: 'monitor' | 'post' | 'reply' | 'growth' | 'alert' | string;
+  label: string;
+  emoji?: string;
+  enabled: boolean;
+  tasks_done: number;
+  config?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WhatsAppDraft {
+  id: string;
+  store_id: string;
+  lead_id?: string;
+  recipient_name: string;
+  recipient_phone: string;
+  message_text: string;
+  status: 'Draft' | 'Approved' | 'Sent' | 'Failed';
+  media_url?: string;
+  trigger_reason?: string;
+  created_at?: string;
+}
+
+export interface SupplierInvoice {
+  id: string;
+  store_id: string;
+  supplier_name: string;
+  invoice_number?: string;
+  invoice_date?: string;
+  total_amount: number;
+  currency?: string;
+  status: 'Pending' | 'Verified' | 'Paid';
+  items?: unknown[];
+  image_storage_path?: string;
+  captured_via?: 'whatsapp' | 'manual' | 'email' | 'scan';
+  created_at?: string;
+}
+
+
 // Seed Mock Data
 const MOCK_STORES: Store[] = [
   {
@@ -571,5 +653,184 @@ export const db = {
       price: randomPrice,
       is_active: true
     });
+  },
+
+  // ==========================================
+  // v2 Lead Management CRM Operations
+  // ==========================================
+  getLeads: async (storeId: string = 'store-1'): Promise<Lead[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('leads').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+      if (!error && data) return data as Lead[];
+    }
+    const raw = getLocalStorageData<any>('miller_leads_v1', []);
+    return raw.map((l: any) => ({
+      id: l.id,
+      store_id: storeId,
+      name: l.name,
+      contact: l.contact,
+      contact_type: l.contactType || 'whatsapp',
+      source: l.source || 'manual',
+      source_name: l.sourceName,
+      score: l.score || 'cold',
+      status: l.status || 'new',
+      business_unit: l.businessUnit,
+      notes: l.notes || '',
+      tags: l.tags || [],
+      estimated_value: l.estimatedValue || 0,
+      next_action: l.nextAction,
+      next_action_date: l.nextActionDate,
+      last_contacted_at: l.lastContactedAt,
+      nurture_sent: l.nurtureSent || 0,
+      nurture_messages: l.nurtureMessages || [],
+      created_at: l.capturedAt || new Date().toISOString(),
+    }));
+  },
+
+  createLead: async (lead: Omit<Lead, 'id'> & { id?: string }): Promise<Lead> => {
+    const id = lead.id || `lead-${Date.now().toString(36)}`;
+    const fullLead: Lead = {
+      ...lead,
+      id,
+      store_id: lead.store_id || 'store-1',
+      score: lead.score || 'cold',
+      status: lead.status || 'new',
+      created_at: lead.created_at || new Date().toISOString()
+    };
+
+    if (!isMock) {
+      const { data, error } = await supabase.from('leads').insert([fullLead]).select().single();
+      if (!error && data) return data as Lead;
+    }
+
+    const raw = getLocalStorageData<any>('miller_leads_v1', []);
+    const ecosystemItem = {
+      id: fullLead.id,
+      name: fullLead.name,
+      contact: fullLead.contact,
+      contactType: fullLead.contact_type,
+      source: fullLead.source,
+      sourceName: fullLead.source_name,
+      score: fullLead.score,
+      status: fullLead.status,
+      businessUnit: fullLead.business_unit,
+      notes: fullLead.notes,
+      tags: fullLead.tags || [],
+      capturedAt: fullLead.created_at,
+      estimatedValue: fullLead.estimated_value,
+      nurtureSent: fullLead.nurture_sent || 0,
+      nurtureMessages: fullLead.nurture_messages || [],
+    };
+    setLocalStorageData('miller_leads_v1', [ecosystemItem, ...raw]);
+    return fullLead;
+  },
+
+  updateLeadStatus: async (leadId: string, status: Lead['status']): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('leads').update({ status, updated_at: new Date().toISOString() }).eq('id', leadId);
+      if (!error) return true;
+    }
+    const raw = getLocalStorageData<any>('miller_leads_v1', []);
+    const updated = raw.map((l: any) => l.id === leadId ? { ...l, status } : l);
+    setLocalStorageData('miller_leads_v1', updated);
+    return true;
+  },
+
+  // ==========================================
+  // v2 Landing Sites Engine Operations
+  // ==========================================
+  getLandingSites: async (storeId: string = 'store-1'): Promise<LandingSite[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('landing_sites').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+      if (!error && data) return data as LandingSite[];
+    }
+    const raw = getLocalStorageData<any>('miller_landing_sites_v1', []);
+    return raw.map((s: any) => ({
+      id: s.id,
+      store_id: storeId,
+      business_name: s.businessName || 'Merchant',
+      published: s.published ?? true,
+      html: s.html || '',
+      created_at: s.createdAt || new Date().toISOString(),
+      updated_at: s.updatedAt || new Date().toISOString(),
+    }));
+  },
+
+  saveLandingSite: async (site: Partial<LandingSite> & { html: string; business_name: string }): Promise<LandingSite> => {
+    const id = site.id || `site-${Date.now().toString(36)}`;
+    const fullSite: LandingSite = {
+      id,
+      store_id: site.store_id || 'store-1',
+      business_name: site.business_name,
+      slug: site.slug || site.business_name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      published: site.published ?? true,
+      html: site.html,
+      created_at: site.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!isMock) {
+      const { data, error } = await supabase.from('landing_sites').upsert([fullSite]).select().single();
+      if (!error && data) return data as LandingSite;
+    }
+
+    const raw = getLocalStorageData<any>('miller_landing_sites_v1', []);
+    const existingIdx = raw.findIndex((s: any) => s.id === id);
+    const item = {
+      id: fullSite.id,
+      businessName: fullSite.business_name,
+      createdAt: fullSite.created_at,
+      updatedAt: fullSite.updated_at,
+      published: fullSite.published,
+      html: fullSite.html,
+    };
+    if (existingIdx >= 0) {
+      raw[existingIdx] = item;
+      setLocalStorageData('miller_landing_sites_v1', raw);
+    } else {
+      setLocalStorageData('miller_landing_sites_v1', [item, ...raw]);
+    }
+    return fullSite;
+  },
+
+  // ==========================================
+  // v2 WhatsApp Drafts Operations
+  // ==========================================
+  getWhatsAppDrafts: async (storeId: string = 'store-1'): Promise<WhatsAppDraft[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase.from('whatsapp_drafts').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
+      if (!error && data) return data as WhatsAppDraft[];
+    }
+    const raw = getLocalStorageData<any>('miller_wa_drafts_v1', []);
+    return raw.map((d: any) => ({
+      id: d.id,
+      store_id: storeId,
+      recipient_name: d.leadName || d.recipient_name || 'Prospect',
+      recipient_phone: d.phone || d.recipient_phone || '',
+      message_text: d.text || d.message_text || '',
+      status: d.status || 'Draft',
+      created_at: d.createdAt || new Date().toISOString()
+    }));
+  },
+
+  createWhatsAppDraft: async (draft: Omit<WhatsAppDraft, 'id'>): Promise<WhatsAppDraft> => {
+    const id = `wa-${Date.now().toString(36)}`;
+    const fullDraft: WhatsAppDraft = { ...draft, id, created_at: new Date().toISOString() };
+    if (!isMock) {
+      const { data, error } = await supabase.from('whatsapp_drafts').insert([fullDraft]).select().single();
+      if (!error && data) return data as WhatsAppDraft;
+    }
+    const raw = getLocalStorageData<any>('miller_wa_drafts_v1', []);
+    const item = {
+      id: fullDraft.id,
+      leadName: fullDraft.recipient_name,
+      phone: fullDraft.recipient_phone,
+      text: fullDraft.message_text,
+      status: fullDraft.status,
+      createdAt: fullDraft.created_at
+    };
+    setLocalStorageData('miller_wa_drafts_v1', [item, ...raw]);
+    return fullDraft;
   }
 };
+
