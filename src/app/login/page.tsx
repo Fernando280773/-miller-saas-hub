@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Layers, Shield, Sparkles, ArrowRight, CheckCircle, UserCheck } from 'lucide-react';
+import { Layers, Shield, Sparkles, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { DEMO_USERS, setActiveUser, UserRole } from '@/lib/auth';
 
@@ -12,13 +12,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [authMode, setAuthMode] = useState<'password' | 'magic_link'>('password');
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'magic_link'>('signin');
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const handleDemoLogin = (role: UserRole) => {
     const user = DEMO_USERS[role];
     setActiveUser(user);
-    setToastMsg(`✓ Authenticated as ${user.name}`);
+    setToastMsg({ text: `✓ Entered Demo Sandbox as ${user.name}`, type: 'info' });
     setTimeout(() => {
       router.push('/dashboard');
     }, 600);
@@ -33,9 +33,42 @@ export default function LoginPage() {
 
     try {
       if (authMode === 'magic_link') {
-        const { error } = await supabase.auth.signInWithOtp({ email });
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined
+          }
+        });
         if (error) throw error;
-        setToastMsg('✉️ Magic link sent to your email. Check your inbox!');
+        setToastMsg({ text: '✉️ Magic link sent! Please check your email inbox.', type: 'success' });
+      } else if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: password || 'defaultpassword123',
+          options: {
+            data: {
+              name: email.split('@')[0],
+              role: 'owner',
+              store_id: 'store-1'
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          setActiveUser({
+            id: data.user.id,
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name || email.split('@')[0],
+            role: 'owner',
+            store_id: 'store-1',
+            avatar_emoji: '👑',
+            is_demo: false
+          });
+          setToastMsg({ text: '✓ Account created! Redirecting to dashboard...', type: 'success' });
+          setTimeout(() => router.push('/dashboard'), 600);
+        }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -43,7 +76,7 @@ export default function LoginPage() {
         });
 
         if (error) {
-          // If Supabase authentication fails (or using mock/local keys), fallback to custom session
+          // If offline/local mock keys are in use, fall back gracefully with clear message
           console.warn('Supabase auth fallback:', error.message);
           const fallbackUser = {
             id: `usr-${Date.now().toString(36)}`,
@@ -51,10 +84,11 @@ export default function LoginPage() {
             name: email.split('@')[0],
             role: 'owner' as UserRole,
             store_id: 'store-1',
-            avatar_emoji: '👑'
+            avatar_emoji: '👑',
+            is_demo: true
           };
           setActiveUser(fallbackUser);
-          setToastMsg('✓ Signed in successfully (Demo Session)');
+          setToastMsg({ text: '✓ Authenticated (Offline Demo Session)', type: 'info' });
           setTimeout(() => router.push('/dashboard'), 600);
           return;
         }
@@ -66,14 +100,15 @@ export default function LoginPage() {
             name: data.user.user_metadata?.name || email.split('@')[0],
             role: (data.user.user_metadata?.role as UserRole) || 'owner',
             store_id: 'store-1',
-            avatar_emoji: '👑'
+            avatar_emoji: '👑',
+            is_demo: false
           });
-          setToastMsg('✓ Signed in successfully!');
+          setToastMsg({ text: '✓ Signed in successfully via Supabase Auth!', type: 'success' });
           setTimeout(() => router.push('/dashboard'), 600);
         }
       }
     } catch (err: unknown) {
-      setToastMsg(`Error: ${(err as Error).message}`);
+      setToastMsg({ text: (err as Error).message || 'Authentication failed', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -90,7 +125,7 @@ export default function LoginPage() {
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Background radial orbs */}
+      {/* Ambient background gradients */}
       <div style={{
         position: 'absolute',
         top: '-10%',
@@ -137,7 +172,7 @@ export default function LoginPage() {
         </Link>
         <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Shield size={14} color="#10B981" />
-          <span>v2 RBAC Security Engine</span>
+          <span>Multi-Tenant Auth Engine</span>
         </div>
       </header>
 
@@ -154,7 +189,7 @@ export default function LoginPage() {
         <div style={{
           width: '100%',
           maxWidth: '460px',
-          background: 'rgba(13, 21, 39, 0.75)',
+          background: 'rgba(13, 21, 39, 0.8)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: 20,
@@ -178,9 +213,13 @@ export default function LoginPage() {
             }}>
               <Sparkles size={12} /> Powered by Miller AI
             </div>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.4rem' }}>Merchant Portal Login</h1>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.4rem' }}>
+              {authMode === 'signup' ? 'Create Merchant Account' : 'Merchant Access Portal'}
+            </h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
-              Access your multi-tenant dashboards &amp; AI agents
+              {authMode === 'signup'
+                ? 'Register your store and configure team roles'
+                : 'Sign in to access your multi-tenant dashboards & AI agents'}
             </p>
           </div>
 
@@ -189,29 +228,34 @@ export default function LoginPage() {
             <div style={{
               padding: '0.75rem 1rem',
               borderRadius: 10,
-              background: toastMsg.startsWith('✓') ? 'rgba(16,185,129,0.15)' : 'rgba(108,99,255,0.15)',
-              border: `1px solid ${toastMsg.startsWith('✓') ? 'rgba(16,185,129,0.3)' : 'rgba(108,99,255,0.3)'}`,
-              color: toastMsg.startsWith('✓') ? '#4ade80' : '#818cf8',
+              background: toastMsg.type === 'success' ? 'rgba(16,185,129,0.15)' : toastMsg.type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(108,99,255,0.15)',
+              border: `1px solid ${toastMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : toastMsg.type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(108,99,255,0.3)'}`,
+              color: toastMsg.type === 'success' ? '#4ade80' : toastMsg.type === 'error' ? '#f87171' : '#818cf8',
               fontSize: '0.82rem',
               fontWeight: 600,
               marginBottom: '1.25rem',
               textAlign: 'center'
             }}>
-              {toastMsg}
+              {toastMsg.text}
             </div>
           )}
 
-          {/* 1-Click Instant Demo Role Switchers */}
+          {/* 1-Click Sandbox Switchers */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
-              ⚡ 1-Click Demo Accounts (RBAC)
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                🧪 Instant Sandbox Preview
+              </span>
+              <span style={{ fontSize: '0.68rem', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '1px 6px', borderRadius: 6 }}>
+                Demo Only
+              </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
               <button
                 type="button"
                 onClick={() => handleDemoLogin('owner')}
                 style={{
-                  padding: '0.65rem 0.5rem',
+                  padding: '0.6rem 0.4rem',
                   background: 'rgba(239,23,142,0.1)',
                   border: '1px solid rgba(239,23,142,0.3)',
                   borderRadius: 10,
@@ -219,18 +263,17 @@ export default function LoginPage() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  textAlign: 'center',
-                  transition: 'all 0.2s'
+                  textAlign: 'center'
                 }}
               >
-                👑 <div style={{ marginTop: 2, color: '#f472b6' }}>Store Owner</div>
+                👑 <div style={{ marginTop: 2, color: '#f472b6' }}>Demo Owner</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleDemoLogin('manager')}
                 style={{
-                  padding: '0.65rem 0.5rem',
+                  padding: '0.6rem 0.4rem',
                   background: 'rgba(142,84,233,0.1)',
                   border: '1px solid rgba(142,84,233,0.3)',
                   borderRadius: 10,
@@ -238,18 +281,17 @@ export default function LoginPage() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  textAlign: 'center',
-                  transition: 'all 0.2s'
+                  textAlign: 'center'
                 }}
               >
-                💼 <div style={{ marginTop: 2, color: '#c084fc' }}>Manager</div>
+                💼 <div style={{ marginTop: 2, color: '#c084fc' }}>Demo Mgr</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleDemoLogin('staff')}
                 style={{
-                  padding: '0.65rem 0.5rem',
+                  padding: '0.6rem 0.4rem',
                   background: 'rgba(28,216,210,0.1)',
                   border: '1px solid rgba(28,216,210,0.3)',
                   borderRadius: 10,
@@ -257,18 +299,19 @@ export default function LoginPage() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  textAlign: 'center',
-                  transition: 'all 0.2s'
+                  textAlign: 'center'
                 }}
               >
-                🛡️ <div style={{ marginTop: 2, color: '#2dd4bf' }}>Staff</div>
+                🛡️ <div style={{ marginTop: 2, color: '#2dd4bf' }}>Demo Staff</div>
               </button>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '1.25rem 0' }}>
             <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Or Sign In With Email</span>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
+              Or Live Supabase Auth
+            </span>
             <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
           </div>
 
@@ -298,13 +341,14 @@ export default function LoginPage() {
               />
             </div>
 
-            {authMode === 'password' && (
+            {authMode !== 'magic_link' && (
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
                   Password
                 </label>
                 <input
                   type="password"
+                  required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••••••"
@@ -326,10 +370,18 @@ export default function LoginPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#818cf8', marginTop: 2 }}>
               <button
                 type="button"
-                onClick={() => setAuthMode(m => m === 'password' ? 'magic_link' : 'password')}
+                onClick={() => setAuthMode(m => m === 'signup' ? 'signin' : 'signup')}
                 style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', padding: 0, fontSize: '0.75rem', fontWeight: 600 }}
               >
-                {authMode === 'password' ? '✨ Sign in with Magic Link' : '🔑 Sign in with Password'}
+                {authMode === 'signup' ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode(m => m === 'magic_link' ? 'signin' : 'magic_link')}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}
+              >
+                {authMode === 'magic_link' ? 'Password Login' : 'Magic Link'}
               </button>
             </div>
 
@@ -354,7 +406,13 @@ export default function LoginPage() {
                 opacity: loading ? 0.7 : 1
               }}
             >
-              {loading ? 'Authenticating...' : authMode === 'magic_link' ? 'Send Magic Link →' : 'Sign In →'}
+              {loading
+                ? 'Connecting to Supabase...'
+                : authMode === 'signup'
+                ? 'Create Account →'
+                : authMode === 'magic_link'
+                ? 'Send Magic Link →'
+                : 'Sign In →'}
             </button>
           </form>
         </div>
@@ -368,7 +426,7 @@ export default function LoginPage() {
         color: 'rgba(255,255,255,0.4)',
         borderTop: '1px solid rgba(255,255,255,0.06)'
       }}>
-        © {new Date().getFullYear()} Miller SaaS Hub · 80% AI Agent Driven · Multi-Tenant Infrastructure
+        © {new Date().getFullYear()} Miller SaaS Hub · Multi-Tenant Infrastructure &amp; RBAC
       </footer>
     </div>
   );

@@ -1,18 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 
+// In-Memory IP Rate Limiter (Sliding Window: 10 requests per 60 seconds)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  entry.count += 1;
+  return false;
+}
+
+// Clean up stale IP records every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of rateLimitMap.entries()) {
+      if (now > entry.resetAt) rateLimitMap.delete(ip);
+    }
+  }, 5 * 60 * 1000);
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
 };
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: CORS_HEADERS });
 }
 
+function sanitizeInput(str: string, maxLen = 500): string {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/[<>]/g, '') // strip dangerous HTML bracket injections
+    .trim()
+    .slice(0, maxLen);
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // 1. IP Rate Limiting Check
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+               req.headers.get('x-real-ip') || 
+               '127.0.0.1';
+
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute before submitting again.' },
+        { status: 429, headers: CORS_HEADERS }
+      );
+    }
+
     const body = await req.json();
     const {
       name,
@@ -21,54 +73,90 @@ export async function POST(req: NextRequest) {
       contact: rawContact,
       notes,
       message,
-      store_id = 'store-1',
+      store_id,
       source = 'landing_page',
       source_name,
-      business_unit
+      business_unit,
+      // Honeypot fields (hidden in forms, bots fill them out)
+      website,
+      _hp_trap,
+      confirm_email
     } = body;
 
-    if (!name || typeof name !== 'string') {
+    // 2. Bot & Honeypot Trap Detection
+    if (website || _hp_trap || (confirm_email && confirm_email !== email)) {
+      // Silently return success to waste bot resources without persisting spam
       return NextResponse.json(
-        { error: 'Name is required' },
+        { success: true, message: 'Submission received' },
+        { status: 200, headers: CORS_HEADERS }
+      );
+    }
+
+    // 3. Mandatory Validation
+    const cleanName = sanitizeInput(name, 100);
+    if (!cleanName || cleanName.length < 2) {
+      return NextResponse.json(
+        { error: 'Valid prospect name is required' },
         { status: 400, headers: CORS_HEADERS }
       );
     }
 
-    const contactVal = phone || email || rawContact || 'Unspecified';
-    const contactType = phone ? 'phone' : email ? 'email' : 'whatsapp';
-    const fullNotes = notes || message || '';
+    const cleanStoreId = sanitizeInput(store_id || '', 50);
+    if (!cleanStoreId) {
+      return NextResponse.json(
+        { error: 'Valid store_id identifier is required' },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
 
-    // Miller AI Auto-Scoring Heuristics
-    const lowerNotes = (fullNotes + ' ' + (source_name || '')).toLowerCase();
+    const cleanEmail = sanitizeInput(email || '', 120);
+    const cleanPhone = sanitizeInput(phone || '', 50);
+    const cleanRawContact = sanitizeInput(rawContact || '', 120);
+
+    const contactVal = cleanPhone || cleanEmail || cleanRawContact;
+    if (!contactVal) {
+      return NextResponse.json(
+        { error: 'At least one contact method (email, phone, or WhatsApp) is required' },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+
+    const contactType = cleanPhone ? 'phone' : cleanEmail ? 'email' : 'whatsapp';
+    const fullNotes = sanitizeInput(notes || message || '', 1000);
+    const cleanSourceName = sanitizeInput(source_name || 'Hosted Landing Page', 100);
+    const cleanBusinessUnit = sanitizeInput(business_unit || '', 100);
+
+    // 4. Miller AI Auto-Scoring Heuristics
+    const combinedText = (fullNotes + ' ' + cleanSourceName).toLowerCase();
     let score: 'hot' | 'warm' | 'cold' = 'warm';
 
     const hotKeywords = ['urgent', 'quote', 'pricing', 'cost', 'buy', 'hire', 'book', 'asap', 'proposal', 'start immediately', 'invoice'];
-    const coldKeywords = ['just browsing', 'spam', 'unsubscribe', 'test'];
+    const coldKeywords = ['just browsing', 'spam', 'unsubscribe', 'test', 'fake'];
 
-    if (hotKeywords.some(kw => lowerNotes.includes(kw))) {
+    if (hotKeywords.some(kw => combinedText.includes(kw))) {
       score = 'hot';
-    } else if (coldKeywords.some(kw => lowerNotes.includes(kw))) {
+    } else if (coldKeywords.some(kw => combinedText.includes(kw))) {
       score = 'cold';
     }
 
     const newLead = {
-      store_id,
-      name: name.trim(),
-      contact: contactVal.trim(),
+      store_id: cleanStoreId,
+      name: cleanName,
+      contact: contactVal,
       contact_type: contactType,
-      source: source as 'landing_page',
-      source_name: source_name || 'Hosted Landing Page',
+      source: 'landing_page' as const,
+      source_name: cleanSourceName,
       score,
       status: 'new' as const,
-      business_unit: business_unit || '',
-      notes: fullNotes.trim(),
+      business_unit: cleanBusinessUnit,
+      notes: fullNotes,
       tags: ['landing-page-capture', 'v2-lead', score],
       created_at: new Date().toISOString(),
       nurture_sent: 0,
       nurture_messages: []
     };
 
-    // 1. Try writing directly to Supabase if live credentials exist
+    // 5. Database Insert with Error Handling
     try {
       const { data, error } = await supabase.from('leads').insert([newLead]).select().single();
       if (!error && data) {
@@ -82,10 +170,10 @@ export async function POST(req: NextRequest) {
         );
       }
     } catch (dbErr) {
-      console.warn('Supabase direct insert skipped or failed:', dbErr);
+      console.warn('Live database lead insertion skipped or fallback mode:', dbErr);
     }
 
-    // 2. Return success response (client-side script will also save to localStorage if embedded)
+    // 6. Return response
     return NextResponse.json(
       {
         success: true,
@@ -100,7 +188,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     console.error('Lead capture error:', err);
     return NextResponse.json(
-      { error: 'Failed to process lead capture submission' },
+      { error: 'Internal server error processing lead capture' },
       { status: 500, headers: CORS_HEADERS }
     );
   }

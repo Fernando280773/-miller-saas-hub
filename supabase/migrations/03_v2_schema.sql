@@ -104,44 +104,84 @@ ALTER TABLE public.ai_agent_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_drafts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.supplier_invoices ENABLE ROW LEVEL SECURITY;
 
--- Tenant Isolation RLS Policies
+-- Store Memberships for Multi-Tenant Isolation
+CREATE TABLE IF NOT EXISTS public.store_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id TEXT NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('owner', 'manager', 'staff')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(store_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_members_lookup ON public.store_members(store_id, user_id, role);
+
+-- Security Definer Function to inspect tenant membership
+CREATE OR REPLACE FUNCTION public.is_store_member(lookup_store_id TEXT, min_role TEXT DEFAULT 'staff')
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.store_members sm
+    WHERE sm.store_id = lookup_store_id
+      AND sm.user_id = auth.uid()
+      AND (
+        CASE 
+          WHEN min_role = 'owner' THEN sm.role = 'owner'
+          WHEN min_role = 'manager' THEN sm.role IN ('owner', 'manager')
+          ELSE sm.role IN ('owner', 'manager', 'staff')
+        END
+      )
+  );
+$$;
+
+-- Strict Tenant Isolation RLS Policies
 CREATE POLICY tenant_leads_policy ON public.leads
     FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (public.is_store_member(store_id, 'staff'))
+    WITH CHECK (public.is_store_member(store_id, 'staff'));
 
 CREATE POLICY tenant_landing_sites_policy ON public.landing_sites
     FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (public.is_store_member(store_id, 'staff'))
+    WITH CHECK (public.is_store_member(store_id, 'manager'));
 
 CREATE POLICY tenant_ai_agent_configs_policy ON public.ai_agent_configs
     FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (public.is_store_member(store_id, 'staff'))
+    WITH CHECK (public.is_store_member(store_id, 'manager'));
 
 CREATE POLICY tenant_whatsapp_drafts_policy ON public.whatsapp_drafts
     FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (public.is_store_member(store_id, 'staff'))
+    WITH CHECK (public.is_store_member(store_id, 'staff'));
 
 CREATE POLICY tenant_supplier_invoices_policy ON public.supplier_invoices
     FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (public.is_store_member(store_id, 'staff'))
+    WITH CHECK (public.is_store_member(store_id, 'staff'));
 
--- Public Policy for Landing Sites & Lead Capture (Unauthenticated Visitors)
+-- Public Policy for Published Landing Sites (Anon Visitors)
 CREATE POLICY public_read_landing_sites ON public.landing_sites
     FOR SELECT
     TO anon
     USING (published = true);
 
+-- Strict Public Policy for Lead Capture (Anon Visitors can only insert if store exists)
 CREATE POLICY public_insert_lead_capture ON public.leads
     FOR INSERT
     TO anon
-    WITH CHECK (source = 'landing_page');
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.stores s 
+            WHERE s.id = store_id
+        )
+    );

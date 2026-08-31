@@ -9,32 +9,36 @@ export interface AuthUser {
   role: UserRole;
   store_id: string;
   avatar_emoji: string;
+  is_demo?: boolean;
 }
 
 export const DEMO_USERS: Record<UserRole, AuthUser> = {
   owner: {
-    id: 'usr-owner-01',
-    email: 'alex.owner@millersaashub.io',
-    name: 'Alex Vance (Store Owner)',
+    id: 'usr-demo-owner',
+    email: 'demo.owner@millersaashub.io',
+    name: 'Alex Vance (Demo Owner)',
     role: 'owner',
     store_id: 'store-1',
-    avatar_emoji: '👑'
+    avatar_emoji: '👑',
+    is_demo: true
   },
   manager: {
-    id: 'usr-manager-02',
-    email: 'sarah.manager@millersaashub.io',
-    name: 'Sarah Connor (Store Manager)',
+    id: 'usr-demo-manager',
+    email: 'demo.manager@millersaashub.io',
+    name: 'Sarah Connor (Demo Manager)',
     role: 'manager',
     store_id: 'store-1',
-    avatar_emoji: '💼'
+    avatar_emoji: '💼',
+    is_demo: true
   },
   staff: {
-    id: 'usr-staff-03',
-    email: 'liam.staff@millersaashub.io',
-    name: 'Liam Smith (Staff Operator)',
+    id: 'usr-demo-staff',
+    email: 'demo.staff@millersaashub.io',
+    name: 'Liam Smith (Demo Staff)',
     role: 'staff',
     store_id: 'store-1',
-    avatar_emoji: '🛡️'
+    avatar_emoji: '🛡️',
+    is_demo: true
   }
 };
 
@@ -48,22 +52,20 @@ export function getActiveUser(): AuthUser {
   } catch (err) {
     console.warn('Failed to parse auth user:', err);
   }
-  // Default to Owner if none stored
   return DEMO_USERS.owner;
 }
 
 export function setActiveUser(user: AuthUser) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-  // Keep active_store_id in sync
   localStorage.setItem('active_store_id', user.store_id);
 }
 
-export function logoutUser() {
+export async function logoutUser() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(AUTH_KEY);
   try {
-    supabase.auth.signOut();
+    await supabase.auth.signOut();
   } catch {
     // ignore
   }
@@ -76,4 +78,32 @@ export function hasPermission(role: UserRole, requiredLevel: UserRole): boolean 
     staff: 1
   };
   return hierarchy[role] >= hierarchy[requiredLevel];
+}
+
+/**
+ * Resolves current live Supabase Auth session or falls back to active stored user
+ */
+export async function resolveCurrentSession(): Promise<AuthUser> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const u = session.user;
+      const role = (u.user_metadata?.role as UserRole) || 'owner';
+      const storeId = u.user_metadata?.store_id || 'store-1';
+      const liveUser: AuthUser = {
+        id: u.id,
+        email: u.email || 'user@example.com',
+        name: u.user_metadata?.name || u.email?.split('@')[0] || 'Merchant User',
+        role,
+        store_id: storeId,
+        avatar_emoji: role === 'owner' ? '👑' : role === 'manager' ? '💼' : '🛡️',
+        is_demo: false
+      };
+      setActiveUser(liveUser);
+      return liveUser;
+    }
+  } catch (err) {
+    console.warn('Live session check failed, using stored context:', err);
+  }
+  return getActiveUser();
 }

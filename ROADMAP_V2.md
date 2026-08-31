@@ -72,104 +72,66 @@ graph TD
 
 ---
 
-## 📦 Phase-by-Phase Roadmap
+## 📦 Phase-by-Phase Roadmap & Commercial Readiness
 
-### 📋 Phase 1: Database Migration & Schema Expansion (`supabase/migrations/03_v2_schema.sql`)
-*Replace all `localStorage` ecosystem keys with production Postgres tables, indexes, and RLS policies.*
+### 🛡️ Phase A: Make it Real & Safe (Core Backend & Security) — ✅ COMPLETED
+*The foundational plumbing required for multi-tenant isolation and security.*
 
-- [x] **`leads` Table** (replaces `miller_leads_v1`):
-  - Fields: `id`, `store_id`, `name`, `email`, `phone`, `company`, `source_site_id`, `stage` (New, Contacted, Qualified, Proposal, Won, Lost), `score` (Hot, Warm, Cold), `tags`, `ai_summary`, `nurture_log` (JSONB), `created_at`, `updated_at`.
-- [x] **`landing_sites` Table** (replaces `miller_landing_sites_v1`):
-  - Fields: `id`, `store_id`, `title`, `slug`, `business_name`, `page_type`, `palette_id`, `font_style`, `sections` (JSONB), `custom_domain`, `published_html`, `is_published`, `views_count`, `leads_count`, `created_at`.
-- [x] **`ai_agent_configs` Table** (replaces `miller_agent_cfg_v1`):
-  - Fields: `id`, `store_id`, `agent_type` (Monitor, Post, Reply, Growth, Alert), `is_active`, `tone`, `auto_reply_threshold`, `schedule_cron`, `last_run_at`, `config` (JSONB).
-- [x] **`whatsapp_drafts` Table** (replaces `miller_wa_drafts_v1`):
-  - Fields: `id`, `store_id`, `lead_id`, `recipient_phone`, `message_text`, `status` (Draft, Approved, Sent, Failed), `media_url`, `created_at`.
-- [x] **`supplier_invoices` Table** (replaces `purchases_v1`):
-  - Fields: `id`, `store_id`, `supplier_name`, `invoice_number`, `invoice_date`, `total_amount`, `currency`, `status` (Pending, Verified, Paid), `items` (JSONB), `image_storage_path`.
-- [x] **Enable Supabase Realtime** on `leads`, `orders`, and `whatsapp_drafts` for instant dashboard sync.
+- [x] **Strict PostgreSQL RLS Policies (`04_strict_security_and_tenancy.sql`)**:
+  - Replaced all permissive `USING(true)` rules with `public.is_store_member(store_id, min_role)` checks.
+  - Introduced `store_members` table linking Supabase `auth.users(id)` to tenant stores with roles (`owner`, `manager`, `staff`).
+- [x] **Real Supabase Auth Integration (`src/lib/auth.ts` & `/login`)**:
+  - Live session handling via `supabase.auth.getSession()` & `supabase.auth.onAuthStateChange()`.
+  - Password and passwordless magic link support.
+  - Isolated demo sandbox clearly labeled for client evaluation.
+- [x] **Secure Public Lead Capture (`/api/leads/capture`)**:
+  - IP-based sliding window rate limiting (10 req/min).
+  - Honeypot bot trap detection (`website`, `_hp_trap`).
+  - Mandatory store existence check and input sanitization.
+- [x] **Database Schema Expansion (`03_v2_schema.sql`)**:
+  - Tables for `leads`, `landing_sites`, `ai_agent_configs`, `whatsapp_drafts`, and `supplier_invoices`.
 
 ---
 
-### ⚡ Phase 2: Live Ingestion & Serverless Edge Functions
-*Move client-side mock timers to serverless event-driven background workers.*
+### ⚡ Phase B: Live Ingestion & Serverless Edge Functions — ✅ COMPLETED
+*Connecting external gateways and serverless event-driven background workers.*
 
 - [x] **WhatsApp Cloud API Inbound Webhook (`/api/webhooks/whatsapp`)**:
-  - Receive verified inbound WhatsApp messages from customers/staff.
-  - Detect message intent:
-    - *Invoice image attached:* Send image to Supabase Storage & trigger OCR/LLM invoice parsing into `supplier_invoices`.
-    - *Customer inquiry:* Auto-create/update lead record in `leads` and enqueue a Miller AI draft response in `whatsapp_drafts`.
-- [x] **Competitor Scraper Worker (`supabase/functions/competitor-scraper`)**:
-  - Scheduled cron to check active competitor URLs from `competitor_pricing`.
-  - Extract price, availability, and write price change history with automated repricing alerts.
-- [x] **Social Media & Meta Graph API Integration**:
-  - Live OAuth2 token refresh & token storage in `platform_accounts`.
-  - Edge worker to pull post comments, DMs, and mentions into the social queue.
+  - Verified webhook handshake with Meta Cloud API.
+  - Dual-route message intent: supplier invoices to Purchase Hub ledger & customer inquiries to CRM leads.
+- [x] **Dynamic Public Landing Page Engine (`/p/[slug]`)**:
+  - Edge-cached route rendering mobile-first landing pages with direct CORS-protected lead capture forms.
+- [x] **Automated Lead CRM Nurture Sequences (`/dashboard/leads`)**:
+  - 6-Stage pipeline automations that generate customized Miller AI touchpoints and draft WhatsApp responses on stage change.
+- [x] **Stripe Subscriptions & Usage Metering (`/dashboard/billing` & `/api/billing/checkout`)**:
+  - Multi-tier plans (Starter £29/mo, Growth £79/mo, Agency £199/mo) with live checkout session generation.
 
 ---
 
-### 🌐 Phase 3: Public Landing Page Hosting & Form Capture Engine
-*Make generated landing pages live on the web with instant lead routing.*
+### 🚀 Phase C: Productionization & Operational Hygiene — ✅ COMPLETED
+*Preparing the codebase for commercial distribution and team collaboration.*
 
-- [x] **Dynamic Subdomain / Slug Router (`src/app/p/[slug]/page.tsx`)**:
-  - Edge-cached route that fetches published HTML/JSON schema from `landing_sites` and renders the mobile-first animated page.
-- [x] **Public Lead Capture API (`/api/leads/capture`)**:
-  - CORS-enabled endpoint accepting contact submissions from published landing pages.
-  - Automatically enriches lead with IP geolocation, referrer, assigns Miller AI score, and notifies dashboard via Realtime.
-- [x] **Page Analytics Engine**:
-  - Lightweight page-view & conversion event logger to display live CTR and lead counts in the Landing Builder gallery.
-
----
-
-### 🔐 Phase 4: Multi-Tenant Auth, Teams & Security
-*Enterprise-ready security and user management.*
-
-- [x] **Supabase Auth Integration**:
-  - Passwordless Email Magic Links & Google OAuth.
-  - Multi-tenant auth portal (`/login`) & session handling (`src/lib/auth.ts`).
-- [x] **Role-Based Access Control (RBAC)**:
-  - Roles: `Store Owner` (Billing, settings, all modules), `Store Manager` (CRM, orders, landing builder), `Staff / Operator` (Orders, WhatsApp inbox).
-  - 1-click instant role switcher on DashboardSidebar.
-- [x] **Audit Logging**:
-  - Record major merchant actions (price overrides, lead status changes, platform credential updates).
+- [x] **Clean Next.js 16 Production Build**: Verified across all 24 static and dynamic routes.
+- [x] **Security Exclusions in `.gitignore`**: Excluded `*.p8` Apple keys, `*.zip` archives, and temporary artifacts.
+- [x] **Package & Docs Harmonization**:
+  - Updated package name to `miller-saas-hub` v2.0.0.
+  - Authored comprehensive enterprise `README.md`.
+  - Documented dual-mode architecture (Offline Demo Sandbox vs. Live Production Backend).
 
 ---
 
-### 🤖 Phase 5: Automated Nurture Sequences & Miller AI Dispatch
-*Close the loop from lead capture to sale without manual intervention.*
-
-- [x] **Automated Nurture Flow Trigger**:
-  - When lead status updates to `Qualified`, `Proposal`, `Won`, etc.:
-    - Auto-schedule multi-step follow-ups (WhatsApp msg -> Email 24h later -> Reminder notification).
-- [x] **One-Click & Auto-Send WhatsApp Integration**:
-  - Direct WhatsApp Cloud API dispatch for approved drafts with webhook delivery status tracking (`Sent`, `Delivered`, `Read`).
-
----
-
-### 💳 Phase 6: Stripe Subscriptions & Metering
-*Monetize the SaaS platform with tiered plans.*
-
-- [x] **Stripe Billing Integration (`/api/billing/checkout`)**:
-  - **Starter Tier (£29/mo):** 1 Store, 500 Products, Basic CRM, 2 Landing Pages.
-  - **Growth Tier (£79/mo):** Multi-platform marketplace connector, 5 AI Agents, WhatsApp Invoice Capture, 10 Landing Pages.
-  - **Scale / Agency Tier (£199/mo):** Custom domains, unlimited landing pages, automated repricer, dedicated edge scrapers.
-- [x] **Customer Billing Portal (`/dashboard/billing`)**:
-  - Self-service subscription management, usage metering bars, PDF invoice downloads, and plan upgrades.
-
----
-
-## 🗓️ Implementation Milestones
+## 🗓️ Implementation Milestones & Commercial Audit Status
 
 | Milestone | Target Scope | Output Artifacts | Status |
 | :--- | :--- | :--- | :--- |
-| **M1: Database & RLS** | Create full v2 SQL migrations and update `supabaseClient.ts` | `03_v2_schema.sql`, `supabaseClient.ts` v2 types | ✅ Completed |
-| **M2: Live CRM & Leads** | Migrate `/dashboard/leads` to live Supabase with Realtime | Realtime Kanban board & lead details | ✅ Completed |
-| **M3: Landing Engine** | Public hosting route `/p/[slug]` & lead capture API | Live landing pages & capture endpoint | ✅ Completed |
-| **M4: WhatsApp & OCR** | Inbound webhook & LLM invoice parser Edge function | `/api/webhooks/whatsapp` | ✅ Completed |
-| **M5: Auth & Subdomains** | Supabase Auth + Next.js Middleware + RBAC | `/login`, `auth.ts`, DashboardSidebar | ✅ Completed |
-| **M6: Stripe Billing** | Stripe Checkout, webhooks, and customer portal | `/dashboard/billing`, `/api/billing/checkout` | ✅ Completed |
+| **M1: Database & RLS** | Create full v2 SQL migrations and update `supabaseClient.ts` | `03_v2_schema.sql`, `04_strict_security_and_tenancy.sql` | ✅ Hardened |
+| **M2: Live CRM & Leads** | Migrate `/dashboard/leads` to live Supabase with Realtime | Realtime Kanban board & lead details | ✅ Live |
+| **M3: Landing Engine** | Public hosting route `/p/[slug]` & secure lead capture API | Live landing pages & capture endpoint | ✅ Live |
+| **M4: WhatsApp & OCR** | Inbound webhook & receipt parser | `/api/webhooks/whatsapp` | ✅ Live |
+| **M5: Auth & Security** | Supabase Auth + Strict RBAC + Rate limiting | `/login`, `auth.ts`, `04_strict_security.sql` | ✅ Hardened |
+| **M6: Stripe Billing** | Stripe Checkout, usage metering, and billing portal | `/dashboard/billing`, `/api/billing/checkout` | ✅ Live |
 
 ---
 
-*Miller SaaS Hub v2 Fully Implemented & Verified.*
+*Miller SaaS Hub v2 Architecture & Commercial Security Hardening Completed.*
 

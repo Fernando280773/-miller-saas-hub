@@ -1,6 +1,7 @@
 {
-  "name": "e-commers-sass",
-  "version": "0.1.0",
+  "name": "miller-saas-hub",
+  "version": "2.0.0",
+  "description": "Miller SaaS Hub — Multi-Tenant E-Commerce & Miller AI Agent Platform",
   "private": true,
   "scripts": {
     "dev": "next dev",
