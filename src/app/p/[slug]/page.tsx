@@ -131,7 +131,7 @@ export default function PublicLandingPage() {
           border: 'none',
           display: 'block'
         }}
-        sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+        sandbox="allow-scripts allow-forms allow-popups"
       />
     </div>
   );

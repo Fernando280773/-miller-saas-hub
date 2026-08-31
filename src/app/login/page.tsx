@@ -27,6 +27,10 @@ export default function LoginPage() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (authMode !== 'magic_link' && !password) {
+      setToastMsg({ text: 'Please enter a password.', type: 'error' });
+      return;
+    }
 
     setLoading(true);
     setToastMsg(null);
@@ -44,7 +48,7 @@ export default function LoginPage() {
       } else if (authMode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email,
-          password: password || 'defaultpassword123',
+          password,
           options: {
             data: {
               name: email.split('@')[0],
@@ -72,7 +76,7 @@ export default function LoginPage() {
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password: password || 'defaultpassword123'
+          password
         });
 
         if (error) {

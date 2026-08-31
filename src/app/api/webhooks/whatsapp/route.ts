@@ -4,7 +4,7 @@ import { db, DEFAULT_STORE_ID } from '@/lib/supabaseClient';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'miller_saas_hub_webhook_secret';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yqeffqndvdstmhihzlgn.supabase.co';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-service-key';
 
 // Server-side service-role client for background webhook writes (bypasses RLS)
 const serviceSupabase = createClient(supabaseUrl, serviceKey, {
