@@ -115,6 +115,41 @@ const SCORE_ICONS: Record<LeadScore, string> = {
   hot: '🔥', warm: '🌡️', cold: '❄️',
 };
 
+/* ─── Miller AI Automated Nurture Templates ─────────────── */
+const NURTURE_TEMPLATES: Record<LeadStatus, { action: string; daysOffset: number; template: (name: string, biz: string) => string }> = {
+  new: {
+    action: 'Send Welcome & Inquiry Acknowledgment',
+    daysOffset: 1,
+    template: (name, biz) => `Hi ${name}, thank you for reaching out to ${biz || 'our team'}! We received your enquiry and would love to help. What is the best time for a quick 5-minute chat?`
+  },
+  contacted: {
+    action: 'Follow-up Requirements & Discovery Check',
+    daysOffset: 2,
+    template: (name, biz) => `Hi ${name}, following up on our recent chat regarding ${biz || 'our services'}. Let us know if you have any questions or need extra details!`
+  },
+  qualified: {
+    action: 'Schedule Solution Consultation & Proposal',
+    daysOffset: 1,
+    template: (name, biz) => `Hi ${name}, great news — we've reviewed your requirements and prepared tailored options for ${biz || 'your business'}. When would be a good time for a brief walkthrough?`
+  },
+  proposal: {
+    action: 'Review Proposal & Feedback Check',
+    daysOffset: 2,
+    template: (name, biz) => `Hi ${name}, we've sent over your tailored proposal for ${biz || 'our services'}. Please take your time to review, and feel free to reach out anytime with adjustments!`
+  },
+  won: {
+    action: 'Partner Welcome & Onboarding Sequence',
+    daysOffset: 1,
+    template: (name, biz) => `🎉 Welcome aboard, ${name}! We're thrilled to partner with you at ${biz || 'our team'}. We're getting everything configured and will share your onboarding guide shortly.`
+  },
+  lost: {
+    action: 'Retention & 30-Day Check-in Loop',
+    daysOffset: 30,
+    template: (name, biz) => `Hi ${name}, thank you again for considering ${biz || 'us'}. We truly appreciate your time and would love to stay in touch for upcoming seasonal offers!`
+  },
+};
+
+
 /* ─── Blank lead ─────────────────────────────────────────── */
 function blankLead(): Lead {
   return {
@@ -139,6 +174,9 @@ export default function LeadsPage() {
   const [importCount, setImportCount] = useState(0);
   const [showImportBanner, setShowImportBanner] = useState(false);
   const [nurtureForm, setNurtureForm] = useState<{leadId:string; channel:NurtureMsg['channel']; content:string}|null>(null);
+  // Automated Nurture State
+  const [autoNurtureEnabled, setAutoNurtureEnabled] = useState(true);
+  const [aiNurtureToast, setAiNurtureToast] = useState<{ leadName: string; action: string; msg: string } | null>(null);
   // Ecosystem state
   const [landingSites, setLandingSites] = useState<LandingSite[]>([]);
   const [agentStatuses, setAgentStatuses] = useState<AgentStatus[]>([]);
@@ -220,9 +258,87 @@ export default function LeadsPage() {
   }
 
   function moveStatus(id: string, status: LeadStatus) {
-    const next = leads.map(l => l.id === id ? { ...l, status } : l);
+    const targetLead = leads.find(l => l.id === id);
+    if (!targetLead) return;
+
+    const bizName = bizProfile.businessName || store?.name || 'Our Team';
+    const templateConfig = NURTURE_TEMPLATES[status] || NURTURE_TEMPLATES.new;
+    const nextDate = new Date(Date.now() + templateConfig.daysOffset * 86400000).toISOString();
+    const generatedMsg = templateConfig.template(targetLead.name || 'Prospect', bizName);
+
+    let updatedNurture = targetLead.nurtureMessages || [];
+    let nurtureCount = targetLead.nurtureSent || 0;
+
+    if (autoNurtureEnabled) {
+      const newNurtureMsg: NurtureMsg = {
+        id: uid(),
+        sentAt: new Date().toISOString(),
+        channel: targetLead.contactType || 'whatsapp',
+        content: `[Miller AI Trigger · Stage → ${status.toUpperCase()}]: ${generatedMsg}`
+      };
+      updatedNurture = [...updatedNurture, newNurtureMsg];
+      nurtureCount += 1;
+
+      // Queue draft into WhatsApp drafts
+      db.createWhatsAppDraft({
+        store_id: store?.id || 'store-1',
+        lead_id: targetLead.id,
+        recipient_name: targetLead.name || 'Prospect',
+        recipient_phone: targetLead.contact || '',
+        message_text: generatedMsg,
+        status: 'Draft',
+        trigger_reason: `stage_change_${status}`
+      }).catch(e => console.warn('Draft creation skipped:', e));
+
+      setAiNurtureToast({
+        leadName: targetLead.name || 'Lead',
+        action: templateConfig.action,
+        msg: generatedMsg
+      });
+      setTimeout(() => setAiNurtureToast(null), 6000);
+    }
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      status,
+      nextAction: templateConfig.action,
+      nextActionDate: nextDate,
+      nurtureMessages: updatedNurture,
+      nurtureSent: nurtureCount,
+      lastContactedAt: autoNurtureEnabled ? new Date().toISOString() : targetLead.lastContactedAt
+    };
+
+    const next = leads.map(l => l.id === id ? updatedLead : l);
     persist(next);
-    if (detailLead?.id === id) setDetailLead(next.find(l => l.id === id) || null);
+    if (detailLead?.id === id) setDetailLead(updatedLead);
+
+    // Sync to Supabase
+    db.updateLeadStatus(id, status).catch(e => console.warn('Supabase status sync skipped:', e));
+  }
+
+  function triggerManualAiNurture(lead: Lead) {
+    const bizName = bizProfile.businessName || store?.name || 'Our Team';
+    const templateConfig = NURTURE_TEMPLATES[lead.status] || NURTURE_TEMPLATES.new;
+    const generatedMsg = templateConfig.template(lead.name, bizName);
+
+    addNurtureMsg(lead.id, lead.contactType, `[Miller AI Instant Touchpoint]: ${generatedMsg}`);
+
+    db.createWhatsAppDraft({
+      store_id: store?.id || 'store-1',
+      lead_id: lead.id,
+      recipient_name: lead.name,
+      recipient_phone: lead.contact,
+      message_text: generatedMsg,
+      status: 'Draft',
+      trigger_reason: 'manual_miller_ai_touchpoint'
+    }).catch(e => console.warn('Manual draft creation skipped:', e));
+
+    setAiNurtureToast({
+      leadName: lead.name,
+      action: 'Instant AI Follow-up Generated',
+      msg: generatedMsg
+    });
+    setTimeout(() => setAiNurtureToast(null), 6000);
   }
 
   function addNurtureMsg(leadId: string, channel: NurtureMsg['channel'], content: string) {
@@ -265,7 +381,21 @@ export default function LeadsPage() {
             Powered by <span style={{ color:'var(--saas-primary)', fontWeight:600 }}>Miller AI</span> · Pipeline tracking &amp; nurture
           </p>
         </div>
-        <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', alignItems:'center' }}>
+          <button 
+            onClick={() => setAutoNurtureEnabled(v => !v)}
+            style={{
+              ...btnStyle(autoNurtureEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'),
+              color: autoNurtureEnabled ? '#10B981' : 'var(--saas-text-muted)',
+              border: `1px solid ${autoNurtureEnabled ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'}`,
+              fontSize: '0.8rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            {autoNurtureEnabled ? '⚡ Auto-Nurture Active' : '⏸️ Auto-Nurture Paused'}
+          </button>
           {importCount > 0 && (
             <button onClick={importFromWA} style={btnStyle('#F59E0B')}>
               📥 Import {importCount} WA Lead{importCount > 1 ? 's' : ''}
@@ -276,6 +406,34 @@ export default function LeadsPage() {
           </button>
         </div>
       </div>
+
+      {/* AI Nurture Toast Banner */}
+      {aiNurtureToast && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.85rem 1.2rem',
+          background: 'linear-gradient(135deg, rgba(108,99,255,0.15), rgba(28,216,210,0.12))',
+          border: '1px solid rgba(108,99,255,0.35)',
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          boxShadow: '0 8px 30px rgba(108,99,255,0.15)'
+        }}>
+          <span style={{ fontSize: '1.4rem' }}>🤖</span>
+          <div style={{ flex: 1, fontSize: '0.82rem' }}>
+            <div style={{ fontWeight: 700, color: '#818cf8', marginBottom: 2 }}>
+              Miller AI Sequence: {aiNurtureToast.action} → {aiNurtureToast.leadName}
+            </div>
+            <div style={{ color: 'var(--saas-text)', opacity: 0.9, lineHeight: 1.4 }}>
+              &ldquo;{aiNurtureToast.msg}&rdquo;
+            </div>
+          </div>
+          <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, background: 'rgba(16,185,129,0.15)', padding: '3px 8px', borderRadius: 20 }}>
+            Draft Queued ✓
+          </span>
+        </div>
+      )}
 
       {/* ── Ecosystem Context Strip ───────────────────────── */}
       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', padding:'0.65rem 0.9rem', background:'rgba(108,99,255,0.06)', border:'1px solid rgba(108,99,255,0.18)', borderRadius:10, alignItems:'center' }}>
@@ -474,14 +632,34 @@ export default function LeadsPage() {
               </div>
             )}
 
-            {/* Miller AI score insight */}
+            {/* Miller AI Nurture Sequence Box */}
             <div style={{ background:'rgba(108,99,255,0.08)', border:'1px solid rgba(108,99,255,0.25)', borderRadius:10, padding:'0.75rem', marginBottom:'1rem', fontSize:'0.78rem' }}>
-              <div style={{ color:'var(--saas-primary)', fontWeight:700, marginBottom:'0.35rem' }}>⚡ Miller AI Insight</div>
-              <div style={{ color:'var(--saas-text-muted)', lineHeight:1.5 }}>
-                {detailLead.score === 'hot' && 'Hot lead — contact within 24h. Use WhatsApp for fastest response. Offer a direct consultation or quote.'}
-                {detailLead.score === 'warm' && `Warm lead — ${detailLead.nurtureSent === 0 ? 'send first nurture message today' : `${detailLead.nurtureSent} message(s) sent`}. Build trust with social proof or a case study.`}
-                {detailLead.score === 'cold' && 'Cold lead — add to automated nurture. Send value content, not a sales pitch. Review in 2 weeks.'}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.4rem' }}>
+                <div style={{ color:'var(--saas-primary)', fontWeight:700 }}>⚡ Miller AI Funnel Sequence</div>
+                <span style={{ fontSize:'0.7rem', color:'#10b981', fontWeight:600, background:'rgba(16,185,129,0.15)', padding:'2px 6px', borderRadius:10 }}>
+                  Stage: {detailLead.status.toUpperCase()}
+                </span>
               </div>
+              <div style={{ color:'var(--saas-text-muted)', lineHeight:1.5, marginBottom:'0.6rem' }}>
+                {detailLead.score === 'hot' && '🔥 Hot priority — instant nurture active. Offer direct pricing or calendar walkthrough.'}
+                {detailLead.score === 'warm' && `🌡️ Warm consideration — ${detailLead.nurtureSent === 0 ? 'send first touchpoint today' : `${detailLead.nurtureSent} follow-up(s) logged`}. Build conviction with case studies.`}
+                {detailLead.score === 'cold' && '❄️ Cold discovery — automated drip sequence scheduled. Deliver value-first educational content.'}
+              </div>
+              <button 
+                onClick={() => triggerManualAiNurture(detailLead)}
+                style={{
+                  ...btnStyle('linear-gradient(135deg, #6C63FF, #10B981)'),
+                  fontSize: '0.75rem',
+                  padding: '0.35rem 0.8rem',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                ⚡ Generate &amp; Queue Next AI Touchpoint
+              </button>
             </div>
 
             {/* Nurture history */}
