@@ -64,7 +64,7 @@ export function logoutUser() {
   localStorage.removeItem(AUTH_KEY);
   try {
     supabase.auth.signOut();
-  } catch (e) {
+  } catch {
     // ignore
   }
 }

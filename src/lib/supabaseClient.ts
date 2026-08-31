@@ -663,12 +663,32 @@ export const db = {
       const { data, error } = await supabase.from('leads').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as Lead[];
     }
-    const raw = getLocalStorageData<any>('miller_leads_v1', []);
-    return raw.map((l: any) => ({
+    interface RawStorageLead {
+      id: string;
+      name: string;
+      contact?: string;
+      contactType?: 'whatsapp' | 'email' | 'phone';
+      source?: Lead['source'];
+      sourceName?: string;
+      score?: Lead['score'];
+      status?: Lead['status'];
+      businessUnit?: string;
+      notes?: string;
+      tags?: string[];
+      estimatedValue?: number;
+      nextAction?: string;
+      nextActionDate?: string;
+      lastContactedAt?: string;
+      nurtureSent?: number;
+      nurtureMessages?: unknown[];
+      capturedAt?: string;
+    }
+    const raw = getLocalStorageData<RawStorageLead>('miller_leads_v1', []);
+    return raw.map((l: RawStorageLead) => ({
       id: l.id,
       store_id: storeId,
       name: l.name,
-      contact: l.contact,
+      contact: l.contact || '',
       contact_type: l.contactType || 'whatsapp',
       source: l.source || 'manual',
       source_name: l.sourceName,
@@ -703,8 +723,25 @@ export const db = {
       if (!error && data) return data as Lead;
     }
 
-    const raw = getLocalStorageData<any>('miller_leads_v1', []);
-    const ecosystemItem = {
+    interface EcosystemLeadItem {
+      id: string;
+      name: string;
+      contact: string;
+      contactType: 'whatsapp' | 'email' | 'phone';
+      source: Lead['source'];
+      sourceName?: string;
+      score: Lead['score'];
+      status: Lead['status'];
+      businessUnit?: string;
+      notes?: string;
+      tags: string[];
+      capturedAt?: string;
+      estimatedValue?: number;
+      nurtureSent: number;
+      nurtureMessages: unknown[];
+    }
+    const raw = getLocalStorageData<EcosystemLeadItem>('miller_leads_v1', []);
+    const ecosystemItem: EcosystemLeadItem = {
       id: fullLead.id,
       name: fullLead.name,
       contact: fullLead.contact,
@@ -730,8 +767,13 @@ export const db = {
       const { error } = await supabase.from('leads').update({ status, updated_at: new Date().toISOString() }).eq('id', leadId);
       if (!error) return true;
     }
-    const raw = getLocalStorageData<any>('miller_leads_v1', []);
-    const updated = raw.map((l: any) => l.id === leadId ? { ...l, status } : l);
+    interface BaseLeadRecord {
+      id: string;
+      status?: Lead['status'];
+      [key: string]: unknown;
+    }
+    const raw = getLocalStorageData<BaseLeadRecord>('miller_leads_v1', []);
+    const updated = raw.map((l: BaseLeadRecord) => l.id === leadId ? { ...l, status } : l);
     setLocalStorageData('miller_leads_v1', updated);
     return true;
   },
@@ -744,8 +786,16 @@ export const db = {
       const { data, error } = await supabase.from('landing_sites').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as LandingSite[];
     }
-    const raw = getLocalStorageData<any>('miller_landing_sites_v1', []);
-    return raw.map((s: any) => ({
+    interface RawStorageSite {
+      id: string;
+      businessName?: string;
+      createdAt?: string;
+      updatedAt?: string;
+      published?: boolean;
+      html?: string;
+    }
+    const raw = getLocalStorageData<RawStorageSite>('miller_landing_sites_v1', []);
+    return raw.map((s: RawStorageSite) => ({
       id: s.id,
       store_id: storeId,
       business_name: s.businessName || 'Merchant',
@@ -774,9 +824,17 @@ export const db = {
       if (!error && data) return data as LandingSite;
     }
 
-    const raw = getLocalStorageData<any>('miller_landing_sites_v1', []);
-    const existingIdx = raw.findIndex((s: any) => s.id === id);
-    const item = {
+    interface StoredSiteItem {
+      id: string;
+      businessName: string;
+      createdAt?: string;
+      updatedAt?: string;
+      published?: boolean;
+      html: string;
+    }
+    const raw = getLocalStorageData<StoredSiteItem>('miller_landing_sites_v1', []);
+    const existingIdx = raw.findIndex((s: StoredSiteItem) => s.id === id);
+    const item: StoredSiteItem = {
       id: fullSite.id,
       businessName: fullSite.business_name,
       createdAt: fullSite.created_at,
@@ -801,8 +859,19 @@ export const db = {
       const { data, error } = await supabase.from('whatsapp_drafts').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as WhatsAppDraft[];
     }
-    const raw = getLocalStorageData<any>('miller_wa_drafts_v1', []);
-    return raw.map((d: any) => ({
+    interface RawStorageDraft {
+      id: string;
+      leadName?: string;
+      recipient_name?: string;
+      phone?: string;
+      recipient_phone?: string;
+      text?: string;
+      message_text?: string;
+      status?: WhatsAppDraft['status'];
+      createdAt?: string;
+    }
+    const raw = getLocalStorageData<RawStorageDraft>('miller_wa_drafts_v1', []);
+    return raw.map((d: RawStorageDraft) => ({
       id: d.id,
       store_id: storeId,
       recipient_name: d.leadName || d.recipient_name || 'Prospect',
@@ -820,8 +889,16 @@ export const db = {
       const { data, error } = await supabase.from('whatsapp_drafts').insert([fullDraft]).select().single();
       if (!error && data) return data as WhatsAppDraft;
     }
-    const raw = getLocalStorageData<any>('miller_wa_drafts_v1', []);
-    const item = {
+    interface StoredDraftItem {
+      id: string;
+      leadName: string;
+      phone: string;
+      text: string;
+      status: WhatsAppDraft['status'];
+      createdAt?: string;
+    }
+    const raw = getLocalStorageData<StoredDraftItem>('miller_wa_drafts_v1', []);
+    const item: StoredDraftItem = {
       id: fullDraft.id,
       leadName: fullDraft.recipient_name,
       phone: fullDraft.recipient_phone,

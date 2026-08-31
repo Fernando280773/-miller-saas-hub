@@ -735,7 +735,7 @@ export default function IntegrationsList({ storeId, onRefreshProducts }: Integra
                       </select>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--saas-text-muted)', lineHeight: 1.5 }}>
-                      Apply at <strong>banked.com</strong>. UK Open Banking specialist — QR code and "Pay by Bank" link for every invoice, no card fees, instant settlement.
+                      Apply at <strong>banked.com</strong>. UK Open Banking specialist — QR code and &quot;Pay by Bank&quot; link for every invoice, no card fees, instant settlement.
                     </p>
                   </div>
                 )}

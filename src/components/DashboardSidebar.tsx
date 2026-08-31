@@ -33,11 +33,14 @@ interface SidebarProps {
 export default function DashboardSidebar({ storeName = "Aura Artisans", storeLogo = "🏺" }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser>(DEMO_USERS.owner);
+  const [user, setUser] = useState<AuthUser>(getActiveUser);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
   useEffect(() => {
-    setUser(getActiveUser());
+    // Sync active user if updated in another tab/window
+    const handler = () => setUser(getActiveUser());
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
   }, []);
 
   const handleRoleChange = (role: UserRole) => {
