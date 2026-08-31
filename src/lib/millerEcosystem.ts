@@ -4,13 +4,21 @@
  * Social Accounts ↔ Lead Management ↔ Landing Builder ↔ Business Profile
  */
 
-/* ─── Storage keys (single source of truth) ─── */
 export const LEADS_KEY       = 'miller_leads_v1';
 export const SITES_KEY       = 'miller_landing_sites_v1';
 export const BIZ_INFO_KEY    = 'miller_business_info_v1';
 export const SOCIAL_CREDS_KEY= 'miller_social_creds_v1';
 export const AGENT_CFG_KEY   = 'miller_agent_cfg_v1';
 export const WA_DRAFTS_KEY   = 'miller_wa_drafts_v1';
+
+export const ECOSYSTEM_KEYS = {
+  leads: LEADS_KEY,
+  landingSites: SITES_KEY,
+  businessInfo: BIZ_INFO_KEY,
+  socialCreds: SOCIAL_CREDS_KEY,
+  agentConfig: AGENT_CFG_KEY,
+  waDrafts: WA_DRAFTS_KEY,
+};
 
 /* ─── Shared mini-types (avoid import cycles) ─── */
 export type LeadScore  = 'hot' | 'warm' | 'cold';

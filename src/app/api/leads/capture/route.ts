@@ -1,37 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
-
-// In-Memory IP Rate Limiter (Sliding Window: 10 requests per 60 seconds)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return true;
-  }
-
-  entry.count += 1;
-  return false;
-}
-
-// Clean up stale IP records every 5 minutes
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, entry] of rateLimitMap.entries()) {
-      if (now > entry.resetAt) rateLimitMap.delete(ip);
-    }
-  }, 5 * 60 * 1000);
-}
+import { isRateLimited, sanitizeInput } from '@/lib/rateLimiter';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -41,14 +10,6 @@ const CORS_HEADERS = {
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: CORS_HEADERS });
-}
-
-function sanitizeInput(str: string, maxLen = 500): string {
-  if (typeof str !== 'string') return '';
-  return str
-    .replace(/[<>]/g, '') // strip dangerous HTML bracket injections
-    .trim()
-    .slice(0, maxLen);
 }
 
 export async function POST(req: NextRequest) {
