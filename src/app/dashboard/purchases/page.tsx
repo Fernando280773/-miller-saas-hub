@@ -545,6 +545,8 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
   const [imgBlob, setImgBlob] = useState<Blob|null>(null);
   const [imgPreview, setImgPreview] = useState<string|null>(null);
   const [dragging, setDragging] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanBanner, setScanBanner] = useState<string|null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
@@ -568,13 +570,65 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
     setForm(p => ({...p, supplierId:id, supplierName:sup?.name||'', category:sup?.category||'general'}));
   };
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/') && file.type!=='application/pdf') return;
     setImgBlob(file);
     setField('hasImage', true);
     if (file.type.startsWith('image/')) {
       const url = URL.createObjectURL(file);
       setImgPreview(url);
+    }
+
+    // Trigger Live AI Invoice Vision OCR
+    setIsScanning(true);
+    setScanBanner(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('mode', 'invoice');
+
+      const res = await fetch('/api/analyze-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data?.invoice) {
+        const inv = data.invoice;
+        let matchedSup = suppliers.find(s => s.name.toLowerCase().includes(inv.supplierName.toLowerCase()) || inv.supplierName.toLowerCase().includes(s.name.toLowerCase()));
+        if (!matchedSup && suppliers.length > 0) {
+          matchedSup = suppliers[0];
+        }
+
+        setForm(prev => ({
+          ...prev,
+          supplierId: matchedSup?.id || prev.supplierId || (suppliers[0]?.id || ''),
+          supplierName: matchedSup?.name || inv.supplierName || prev.supplierName,
+          category: (matchedSup?.category || inv.category || prev.category) as SupplierCategory,
+          invoiceNumber: inv.invoiceNumber || prev.invoiceNumber,
+          invoiceDate: inv.invoiceDate || prev.invoiceDate,
+          dueDate: inv.dueDate || prev.dueDate,
+          subtotal: inv.subtotal || prev.subtotal,
+          vat: inv.vat || prev.vat,
+          grandTotal: inv.grandTotal || prev.grandTotal,
+          paymentMethod: (inv.paymentMethod as PaymentMethod) || prev.paymentMethod,
+          lineItems: (inv.lineItems && inv.lineItems.length > 0)
+            ? inv.lineItems.map((li: { description?: string; qty?: number; unitPrice?: number }) => ({
+                description: li.description || 'Wholesale item',
+                qty: Number(li.qty || 1),
+                unitPrice: Number(li.unitPrice || 0)
+              }))
+            : prev.lineItems
+        }));
+
+        playNotificationChime('invoice');
+        setScanBanner(`⚡ Miller AI Vision OCR: Extracted ${inv.lineItems?.length || 1} line item(s) · £${Number(inv.grandTotal || 0).toFixed(2)} Total`);
+      }
+    } catch (err) {
+      console.warn('AI Invoice OCR error:', err);
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -593,11 +647,41 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
       <div style={{ background:'#0f1420', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, width:'100%', maxWidth:640, maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
         <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', margin:0 }}>{form.id ? 'Edit Invoice' : 'Add Invoice'}</h3>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', margin:0 }}>{form.id ? 'Edit Invoice' : 'Add Invoice'}</h3>
+            <span style={{ fontSize:'0.7rem', padding:'2px 8px', borderRadius:20, background:'rgba(99,102,241,0.15)', color:'#818cf8', fontWeight:700 }}>
+              AI Vision Enabled
+            </span>
+          </div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--saas-text-muted)' }}><X size={18}/></button>
         </div>
 
         <div style={{ padding:'1.25rem 1.5rem', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:'0.85rem' }}>
+          {/* AI Scan Status Banner */}
+          {isScanning && (
+            <div style={{
+              padding:'0.75rem 1rem', borderRadius:10,
+              background:'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(16,185,129,0.15))',
+              border:'1px solid rgba(99,102,241,0.4)',
+              display:'flex', alignItems:'center', gap:10, fontSize:'0.82rem', color:'#c7d2fe'
+            }}>
+              <span style={{ animation:'spin 1s linear infinite', display:'inline-block' }}>🌀</span>
+              <span><strong>Miller AI Vision OCR:</strong> Scanning receipt, line items, and VAT totals...</span>
+            </div>
+          )}
+
+          {scanBanner && (
+            <div style={{
+              padding:'0.75rem 1rem', borderRadius:10,
+              background:'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(99,102,241,0.15))',
+              border:'1px solid rgba(16,185,129,0.4)',
+              display:'flex', alignItems:'center', gap:10, fontSize:'0.82rem', color:'#a7f3d0'
+            }}>
+              <span>✓</span>
+              <span>{scanBanner}</span>
+            </div>
+          )}
+
           {/* Image upload */}
           <div>
             <label style={{ fontSize:'0.72rem', color:'var(--saas-text-muted)', display:'block', marginBottom:6 }}>Invoice Photo / PDF (optional)</label>
@@ -618,7 +702,7 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
                 : (
                   <div style={{ fontSize:'0.8rem', color:'var(--saas-text-muted)' }}>
                     <Upload size={20} style={{ display:'block', margin:'0 auto 0.4rem', opacity:0.5 }}/>
-                    Drag & drop or click to upload · <span style={{ color:'#818cf8' }}>or use camera →</span>
+                    Drag & drop or click to upload · <span style={{ color:'#818cf8' }}>Auto-scanned by Miller AI →</span>
                   </div>
                 )
               }
@@ -630,7 +714,7 @@ function InvoiceModal({ suppliers, invoice, onSave, onClose }:
               padding:'5px 12px', borderRadius:6, cursor:'pointer',
               background:'rgba(99,102,241,0.12)', color:'#818cf8',
               border:'1px solid rgba(99,102,241,0.2)', fontSize:'0.75rem', fontWeight:600,
-            }}><Camera size={12}/> Take Photo</button>
+            }}><Camera size={12}/> Snap Photo with Camera</button>
           </div>
 
           {/* Supplier */}
