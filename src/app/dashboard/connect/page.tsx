@@ -745,18 +745,28 @@ export default function ConnectPage() {
       const allStores = await db.getStores();
       const cur = allStores.find(s => s.id === activeId) || allStores[0];
       if (cur) setStore(cur);
-      setConns(loadConnections());
+
+      // Load platform accounts from Supabase / local storage
+      const liveConns = await db.getPlatformAccounts(cur?.id || activeId);
+      const localConns = loadConnections();
+      setConns({ ...localConns, ...liveConns });
       setLoading(false);
     };
     load();
   }, []);
 
-  const updateConn = (id: string, update: Partial<PlatformConn>) => {
+  const updateConn = async (id: string, update: Partial<PlatformConn>) => {
+    let fullUpdated: PlatformConn | undefined;
     setConns(prev => {
       const next = { ...prev, [id]: { ...prev[id], ...update } };
       saveConnections(next);
+      fullUpdated = next[id];
       return next;
     });
+
+    if (fullUpdated) {
+      await db.savePlatformAccount(store?.id || DEFAULT_STORE_ID, id, fullUpdated).catch(e => console.warn('Supabase platform account save skipped:', e));
+    }
   };
 
   const totalConnected = Object.values(conns).filter(c => c.status === 'connected').length;

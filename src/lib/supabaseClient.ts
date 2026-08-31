@@ -153,6 +153,19 @@ export interface SupplierInvoice {
   created_at?: string;
 }
 
+export interface PlatformAccount {
+  id: string;
+  store_id: string;
+  platform_id: string;
+  api_key?: string;
+  api_secret?: string;
+  store_url?: string;
+  status: 'disconnected' | 'connected' | 'error' | 'testing';
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 
 export const DEFAULT_STORE_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -1077,6 +1090,54 @@ export const db = {
     };
     setLocalStorageData('miller_wa_drafts_v1', [item, ...raw]);
     return fullDraft;
+  },
+
+  // ==========================================
+  // v2 Platform Accounts Operations
+  // ==========================================
+  getPlatformAccounts: async (storeId: string = DEFAULT_STORE_ID): Promise<Record<string, { apiKey: string; apiSecret: string; storeUrl: string; status: 'disconnected' | 'connected' | 'error' | 'testing'; notes: string }>> => {
+    if (!isMock) {
+      const { data, error } = await supabase
+        .from('platform_accounts')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!error && data && data.length > 0) {
+        const accMap: Record<string, { apiKey: string; apiSecret: string; storeUrl: string; status: 'disconnected' | 'connected' | 'error' | 'testing'; notes: string }> = {};
+        data.forEach(item => {
+          accMap[item.platform_id] = {
+            apiKey: item.api_key || '',
+            apiSecret: item.api_secret || '',
+            storeUrl: item.store_url || '',
+            status: (item.status as 'disconnected' | 'connected' | 'error' | 'testing') || 'disconnected',
+            notes: item.notes || ''
+          };
+        });
+        return accMap;
+      }
+    }
+    const raw = getLocalStorageData<Record<string, { apiKey: string; apiSecret: string; storeUrl: string; status: 'disconnected' | 'connected' | 'error' | 'testing'; notes: string }>>('miller_platform_conns_v1', [{}]);
+    return raw[0] || {};
+  },
+
+  savePlatformAccount: async (storeId: string = DEFAULT_STORE_ID, platformId: string, conn: { apiKey: string; apiSecret: string; storeUrl: string; status: string; notes: string }) => {
+    const payload = {
+      id: `${storeId}_${platformId}`,
+      store_id: storeId,
+      platform_id: platformId,
+      api_key: conn.apiKey,
+      api_secret: conn.apiSecret,
+      store_url: conn.storeUrl,
+      status: conn.status,
+      notes: conn.notes,
+      updated_at: new Date().toISOString()
+    };
+    if (!isMock) {
+      await supabase.from('platform_accounts').upsert([payload], { onConflict: 'store_id,platform_id' });
+    }
+    const current = getLocalStorageData<Record<string, typeof conn>>('miller_platform_conns_v1', [{}]);
+    const updated = { ...(current[0] || {}), [platformId]: conn };
+    setLocalStorageData('miller_platform_conns_v1', [updated]);
+    return updated;
   }
 };
 
