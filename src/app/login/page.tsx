@@ -49,7 +49,7 @@ export default function LoginPage() {
             data: {
               name: email.split('@')[0],
               role: 'owner',
-              store_id: 'store-1'
+              store_id: '00000000-0000-0000-0000-000000000001'
             }
           }
         });
@@ -62,7 +62,7 @@ export default function LoginPage() {
             email: data.user.email || email,
             name: data.user.user_metadata?.name || email.split('@')[0],
             role: 'owner',
-            store_id: 'store-1',
+            store_id: (data.user.user_metadata?.store_id as string) || '00000000-0000-0000-0000-000000000001',
             avatar_emoji: '👑',
             is_demo: false
           });
@@ -83,7 +83,7 @@ export default function LoginPage() {
             email,
             name: email.split('@')[0],
             role: 'owner' as UserRole,
-            store_id: 'store-1',
+            store_id: '00000000-0000-0000-0000-000000000001',
             avatar_emoji: '👑',
             is_demo: true
           };
@@ -99,7 +99,7 @@ export default function LoginPage() {
             email: data.user.email || email,
             name: data.user.user_metadata?.name || email.split('@')[0],
             role: (data.user.user_metadata?.role as UserRole) || 'owner',
-            store_id: 'store-1',
+            store_id: (data.user.user_metadata?.store_id as string) || '00000000-0000-0000-0000-000000000001',
             avatar_emoji: '👑',
             is_demo: false
           });

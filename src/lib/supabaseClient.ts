@@ -154,8 +154,23 @@ export interface SupplierInvoice {
 }
 
 
+export const DEFAULT_STORE_ID = '00000000-0000-0000-0000-000000000001';
+
 // Seed Mock Data
 const MOCK_STORES: Store[] = [
+  {
+    id: '00000000-0000-0000-0000-000000000001',
+    name: 'Miller Demo Store',
+    subdomain: 'demo',
+    logo_text: '⚡',
+    description: 'Seeded default tenant for Miller SaaS Hub.',
+    primary_color: '#EF178E',
+    secondary_color: '#8E54E9',
+    bg_color: '#ffffff',
+    text_color: '#1f2937',
+    btn_color: '#EF178E',
+    layout: 'grid'
+  },
   {
     id: 'store-1',
     name: 'Aura Artisans',

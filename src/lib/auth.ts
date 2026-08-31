@@ -18,7 +18,7 @@ export const DEMO_USERS: Record<UserRole, AuthUser> = {
     email: 'demo.owner@millersaashub.io',
     name: 'Alex Vance (Demo Owner)',
     role: 'owner',
-    store_id: 'store-1',
+    store_id: '00000000-0000-0000-0000-000000000001',
     avatar_emoji: '👑',
     is_demo: true
   },
@@ -27,7 +27,7 @@ export const DEMO_USERS: Record<UserRole, AuthUser> = {
     email: 'demo.manager@millersaashub.io',
     name: 'Sarah Connor (Demo Manager)',
     role: 'manager',
-    store_id: 'store-1',
+    store_id: '00000000-0000-0000-0000-000000000001',
     avatar_emoji: '💼',
     is_demo: true
   },
@@ -36,7 +36,7 @@ export const DEMO_USERS: Record<UserRole, AuthUser> = {
     email: 'demo.staff@millersaashub.io',
     name: 'Liam Smith (Demo Staff)',
     role: 'staff',
-    store_id: 'store-1',
+    store_id: '00000000-0000-0000-0000-000000000001',
     avatar_emoji: '🛡️',
     is_demo: true
   }
@@ -89,7 +89,7 @@ export async function resolveCurrentSession(): Promise<AuthUser> {
     if (session?.user) {
       const u = session.user;
       const role = (u.user_metadata?.role as UserRole) || 'owner';
-      const storeId = u.user_metadata?.store_id || 'store-1';
+      const storeId = u.user_metadata?.store_id || '00000000-0000-0000-0000-000000000001';
       const liveUser: AuthUser = {
         id: u.id,
         email: u.email || 'user@example.com',
