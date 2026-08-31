@@ -192,16 +192,21 @@ export default function LeadsPage() {
       const stores = await db.getStores();
       const cur = stores.find(s => s.id === id) || stores[0];
       if (cur) setStore(cur);
+
+      // Load leads from live Supabase / db layer
+      const loadedLeads = await db.getLeads(cur?.id || id);
+      setLeads(loadedLeads as unknown as Lead[]);
+
+      // check WA drafts for importable leads
+      const drafts = await db.getWhatsAppDrafts(cur?.id || id);
+      setImportCount(drafts.length);
+
+      // Ecosystem: load connected data
+      setLandingSites(getLandingSites());
+      setAgentStatuses(getAgentStatuses());
+      setBizProfile(readBusinessProfile());
     };
     load();
-    setLeads(loadLeads());
-    // check WA drafts for importable leads
-    const drafts = loadWADrafts().filter(d => !d.processed);
-    setImportCount(drafts.length);
-    // Ecosystem: load connected data
-    setLandingSites(getLandingSites());
-    setAgentStatuses(getAgentStatuses());
-    setBizProfile(readBusinessProfile());
   }, []);
 
   const persist = useCallback((next: Lead[]) => {
@@ -210,38 +215,61 @@ export default function LeadsPage() {
   }, []);
 
   /* Import unprocessed WA drafts as new leads */
-  function importFromWA() {
-    const drafts = loadWADrafts().filter(d => !d.processed);
+  async function importFromWA() {
+    const drafts = await db.getWhatsAppDrafts(store?.id || DEFAULT_STORE_ID);
     if (!drafts.length) return;
-    const existing = loadLeads();
+    const existing = leads;
     const existingPhones = new Set(existing.map(l => l.contact));
-    const newLeads: Lead[] = drafts
-      .filter(d => !existingPhones.has(d.phone))
-      .map(d => ({
-        id: uid(),
-        name: d.senderName || 'Unknown',
-        contact: d.phone,
-        contactType: 'whatsapp' as ContactType,
-        source: 'whatsapp' as LeadSource,
-        sourceName: 'WA Invoice Capture',
-        score: 'warm' as LeadScore,
-        status: 'new' as LeadStatus,
-        notes: d.note || '',
+    const toImport = drafts.filter(d => d.recipient_phone && !existingPhones.has(d.recipient_phone));
+    
+    for (const d of toImport) {
+      await db.createLead({
+        store_id: store?.id || DEFAULT_STORE_ID,
+        name: d.recipient_name || 'Prospect',
+        contact: d.recipient_phone,
+        contact_type: 'whatsapp',
+        source: 'whatsapp',
+        source_name: 'WA Inbound Capture',
+        score: 'warm',
+        status: 'new',
+        notes: d.message_text || '',
         tags: ['wa-import'],
-        capturedAt: d.receivedAt,
-        nurtureSent: 0,
-        nurtureMessages: [],
-      }));
-    if (!newLeads.length) { setShowImportBanner(true); setTimeout(()=>setShowImportBanner(false),3000); return; }
-    persist([...existing, ...newLeads]);
+        nurture_sent: 0,
+        nurture_messages: []
+      });
+    }
+
+    const reloaded = await db.getLeads(store?.id || DEFAULT_STORE_ID);
+    persist(reloaded as unknown as Lead[]);
     setImportCount(0);
     setShowImportBanner(true);
     setTimeout(() => setShowImportBanner(false), 4000);
   }
 
   /* Add / save lead */
-  function saveLead(lead: Lead) {
+  async function saveLead(lead: Lead) {
     const scored = { ...lead, score: autoScore(lead) };
+    await db.createLead({
+      id: scored.id,
+      store_id: store?.id || DEFAULT_STORE_ID,
+      name: scored.name,
+      contact: scored.contact,
+      contact_type: scored.contactType,
+      source: scored.source,
+      source_name: scored.sourceName,
+      score: scored.score,
+      status: scored.status,
+      business_unit: scored.businessUnit,
+      notes: scored.notes,
+      tags: scored.tags,
+      estimated_value: scored.estimatedValue,
+      next_action: scored.nextAction,
+      next_action_date: scored.nextActionDate,
+      last_contacted_at: scored.lastContactedAt,
+      nurture_sent: scored.nurtureSent,
+      nurture_messages: scored.nurtureMessages,
+    });
+
     const idx = leads.findIndex(l => l.id === scored.id);
     const next = idx >= 0
       ? leads.map(l => l.id === scored.id ? scored : l)
@@ -252,7 +280,8 @@ export default function LeadsPage() {
     if (detailLead?.id === scored.id) setDetailLead(scored);
   }
 
-  function deleteLead(id: string) {
+  async function deleteLead(id: string) {
+    await db.deleteLead(id);
     persist(leads.filter(l => l.id !== id));
     if (detailLead?.id === id) setDetailLead(null);
   }

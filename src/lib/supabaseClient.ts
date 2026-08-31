@@ -906,6 +906,120 @@ export const db = {
     return fullSite;
   },
 
+  deleteLead: async (leadId: string): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('leads').delete().eq('id', leadId);
+      if (!error) return true;
+    }
+    interface BaseLeadRecord {
+      id: string;
+      [key: string]: unknown;
+    }
+    const raw = getLocalStorageData<BaseLeadRecord>('miller_leads_v1', []);
+    setLocalStorageData('miller_leads_v1', raw.filter(l => l.id !== leadId));
+    return true;
+  },
+
+  // ==========================================
+  // v2 Supplier Invoices Operations
+  // ==========================================
+  getSupplierInvoices: async (storeId: string = DEFAULT_STORE_ID): Promise<SupplierInvoice[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase
+        .from('supplier_invoices')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data as SupplierInvoice[];
+    }
+    const raw = getLocalStorageData<SupplierInvoice>('miller_supplier_invoices_v1', []);
+    return raw.filter(inv => !inv.store_id || inv.store_id === storeId);
+  },
+
+  createSupplierInvoice: async (invoice: Omit<SupplierInvoice, 'id'> & { id?: string }): Promise<SupplierInvoice> => {
+    const id = invoice.id || `inv-${Date.now().toString(36)}`;
+    const fullInvoice: SupplierInvoice = {
+      ...invoice,
+      id,
+      store_id: invoice.store_id || DEFAULT_STORE_ID,
+      status: invoice.status || 'Pending',
+      created_at: invoice.created_at || new Date().toISOString()
+    };
+    if (!isMock) {
+      const { data, error } = await supabase.from('supplier_invoices').insert([fullInvoice]).select().single();
+      if (!error && data) return data as SupplierInvoice;
+    }
+    const raw = getLocalStorageData<SupplierInvoice>('miller_supplier_invoices_v1', []);
+    setLocalStorageData('miller_supplier_invoices_v1', [fullInvoice, ...raw]);
+    return fullInvoice;
+  },
+
+  updateSupplierInvoiceStatus: async (invoiceId: string, status: SupplierInvoice['status']): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('supplier_invoices').update({ status }).eq('id', invoiceId);
+      if (!error) return true;
+    }
+    const raw = getLocalStorageData<SupplierInvoice>('miller_supplier_invoices_v1', []);
+    const updated = raw.map(inv => inv.id === invoiceId ? { ...inv, status } : inv);
+    setLocalStorageData('miller_supplier_invoices_v1', updated);
+    return true;
+  },
+
+  deleteSupplierInvoice: async (invoiceId: string): Promise<boolean> => {
+    if (!isMock) {
+      const { error } = await supabase.from('supplier_invoices').delete().eq('id', invoiceId);
+      if (!error) return true;
+    }
+    const raw = getLocalStorageData<SupplierInvoice>('miller_supplier_invoices_v1', []);
+    setLocalStorageData('miller_supplier_invoices_v1', raw.filter(inv => inv.id !== invoiceId));
+    return true;
+  },
+
+  // ==========================================
+  // v2 AI Agent Configs Operations
+  // ==========================================
+  getAiAgentConfigs: async (storeId: string = DEFAULT_STORE_ID): Promise<AiAgentConfig[]> => {
+    if (!isMock) {
+      const { data, error } = await supabase
+        .from('ai_agent_configs')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: true });
+      if (!error && data) return data as AiAgentConfig[];
+    }
+    const raw = getLocalStorageData<AiAgentConfig>('miller_agent_cfg_v1', []);
+    return raw.filter(cfg => !cfg.store_id || cfg.store_id === storeId);
+  },
+
+  saveAiAgentConfig: async (agentConfig: Partial<AiAgentConfig> & { agent_id: string; label: string }): Promise<AiAgentConfig> => {
+    const id = agentConfig.id || `ag-${Date.now().toString(36)}`;
+    const fullConfig: AiAgentConfig = {
+      id,
+      store_id: agentConfig.store_id || DEFAULT_STORE_ID,
+      agent_id: agentConfig.agent_id,
+      label: agentConfig.label,
+      emoji: agentConfig.emoji || '🤖',
+      enabled: agentConfig.enabled ?? true,
+      tasks_done: agentConfig.tasks_done || 0,
+      config: agentConfig.config || {},
+      created_at: agentConfig.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (!isMock) {
+      const { data, error } = await supabase.from('ai_agent_configs').upsert([fullConfig], { onConflict: 'store_id,agent_id' }).select().single();
+      if (!error && data) return data as AiAgentConfig;
+    }
+    const raw = getLocalStorageData<AiAgentConfig>('miller_agent_cfg_v1', []);
+    const idx = raw.findIndex(a => a.agent_id === fullConfig.agent_id);
+    if (idx >= 0) {
+      raw[idx] = fullConfig;
+      setLocalStorageData('miller_agent_cfg_v1', raw);
+    } else {
+      setLocalStorageData('miller_agent_cfg_v1', [...raw, fullConfig]);
+    }
+    return fullConfig;
+  },
+
   // ==========================================
   // v2 WhatsApp Drafts Operations
   // ==========================================

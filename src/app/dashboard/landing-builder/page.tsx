@@ -969,23 +969,50 @@ export default function LandingBuilderPage() {
 
   // Load on mount
   useEffect(()=>{
-    const hub=readHubData(); setHubData(hub);
-    const saved=loadSites(); setSites(saved);
-    // Load draft
-    try {
-      const dr=localStorage.getItem(DRAFT_KEY);
-      if(dr) {
-        const d=JSON.parse(dr);
-        if(d.form) setForm(d.form);
-        if(d.competitors) setCompetitors(d.competitors);
-        if(d.plan) setPlan(d.plan);
-        if(d.stage) setStage(d.stage);
-      } else {
+    const loadData = async () => {
+      const hub=readHubData(); setHubData(hub);
+      const localSites = loadSites();
+      try {
+        const liveSites = await db.getLandingSites();
+        const combined: SavedSite[] = [
+          ...localSites,
+          ...liveSites
+            .filter(ls => !localSites.some(loc => loc.id === ls.id))
+            .map(ls => ({
+              id: ls.id,
+              businessName: ls.business_name,
+              createdAt: ls.created_at || new Date().toISOString(),
+              updatedAt: ls.updated_at || new Date().toISOString(),
+              stage: 'view' as BuilderStage,
+              form: blankForm(hub.biz, hub.links),
+              competitors: [],
+              plan: [],
+              html: ls.html,
+              published: ls.published
+            }))
+        ];
+        setSites(combined);
+      } catch {
+        setSites(localSites);
+      }
+
+      // Load draft
+      try {
+        const dr=localStorage.getItem(DRAFT_KEY);
+        if(dr) {
+          const d=JSON.parse(dr);
+          if(d.form) setForm(d.form);
+          if(d.competitors) setCompetitors(d.competitors);
+          if(d.plan) setPlan(d.plan);
+          if(d.stage) setStage(d.stage);
+        } else {
+          setForm(blankForm(hub.biz,hub.links));
+        }
+      } catch {
         setForm(blankForm(hub.biz,hub.links));
       }
-    } catch {
-      setForm(blankForm(hub.biz,hub.links));
-    }
+    };
+    loadData();
   },[]);
 
   // Auto-save draft

@@ -971,8 +971,15 @@ export default function SocialAccountsPage() {
       const stores = await db.getStores();
       const cur = stores.find(s => s.id === id) || stores[0];
       if (cur) setStore(cur);
-      setAccounts(loadAccounts());
-      setAgents(loadAgents());
+      // Load agents from live Supabase / local storage
+      const liveConfigs = await db.getAiAgentConfigs(cur?.id || id);
+      const localAgents = loadAgents();
+      const mergedAgents = localAgents.map(la => {
+        const live = liveConfigs.find(lc => lc.agent_id === la.id);
+        return live ? { ...la, enabled: live.enabled, tasksDone: live.tasks_done } : la;
+      });
+      setAgents(mergedAgents);
+
       setQueue(loadQueue());
       setLog(loadLog());
       setLeadCount(countAgentLeads());
@@ -991,13 +998,31 @@ export default function SocialAccountsPage() {
     });
   }, []);
 
-  const toggleAgent = useCallback((id: string) => {
+  const toggleAgent = useCallback(async (id: string) => {
+    let toggledAgent: AgentCfg | undefined;
     setAgents(prev => {
-      const next = prev.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a);
+      const next = prev.map(a => {
+        if (a.id === id) {
+          toggledAgent = { ...a, enabled: !a.enabled };
+          return toggledAgent;
+        }
+        return a;
+      });
       localStorage.setItem(AG_KEY, JSON.stringify(next));
       return next;
     });
-  }, []);
+
+    if (toggledAgent) {
+      await db.saveAiAgentConfig({
+        store_id: store?.id || DEFAULT_STORE_ID,
+        agent_id: (toggledAgent as AgentCfg).id,
+        label: (toggledAgent as AgentCfg).label,
+        emoji: (toggledAgent as AgentCfg).emoji,
+        enabled: (toggledAgent as AgentCfg).enabled,
+        tasks_done: (toggledAgent as AgentCfg).tasksDone
+      }).catch(e => console.warn('Supabase agent config save skipped:', e));
+    }
+  }, [store?.id]);
 
   const runAgent = useCallback((id: string) => {
     const actions = MOCK_AGENT_ACTIONS[id] || [];

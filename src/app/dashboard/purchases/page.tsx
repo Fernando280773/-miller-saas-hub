@@ -1183,9 +1183,62 @@ export default function PurchasesPage() {
       const cur = stores.find(s=>s.id===id)||stores[0];
       if (cur) setStore(cur);
       setSuppliers(loadSuppliers());
-      setInvoices(loadInvoices());
+
+      // Live Supabase Supplier Invoices
+      const liveInvoices = await db.getSupplierInvoices(cur?.id || id);
+      const localInvs = loadInvoices();
+      const combined: Invoice[] = [
+        ...localInvs,
+        ...liveInvoices
+          .filter(li => !localInvs.some(loc => loc.id === li.id))
+          .map(li => ({
+            id: li.id,
+            supplierId: 'sup-live',
+            supplierName: li.supplier_name,
+            category: 'cash_carry' as SupplierCategory,
+            invoiceNumber: li.invoice_number || `INV-${li.id.slice(0, 5)}`,
+            invoiceDate: li.invoice_date || new Date().toISOString().split('T')[0],
+            dueDate: li.invoice_date || new Date().toISOString().split('T')[0],
+            lineItems: (li.items || []).map((it: unknown) => {
+              const itemObj = (it && typeof it === 'object') ? (it as Record<string, unknown>) : {};
+              return {
+                description: typeof itemObj.description === 'string' ? itemObj.description : 'Captured line item',
+                qty: typeof itemObj.qty === 'number' ? itemObj.qty : 1,
+                unitPrice: typeof itemObj.unitPrice === 'number' ? itemObj.unitPrice : li.total_amount
+              };
+            }),
+            subtotal: li.total_amount,
+            vat: 0,
+            grandTotal: li.total_amount,
+            paymentMethod: 'bank_transfer' as PaymentMethod,
+            paymentStatus: (li.status === 'Paid' ? 'paid' : 'unpaid') as PaymentStatus,
+            hasImage: !!li.image_storage_path,
+            notes: `Captured via ${li.captured_via || 'live integration'}`,
+            createdAt: li.created_at || new Date().toISOString()
+          }))
+      ];
+      setInvoices(combined);
+
+      // Load WA Drafts from Supabase
+      const liveWADrafts = await db.getWhatsAppDrafts(cur?.id || id);
+      const localWADrafts = loadWADrafts();
+      const mappedWADrafts: WADraft[] = [
+        ...localWADrafts,
+        ...liveWADrafts
+          .filter(ld => !localWADrafts.some(loc => loc.id === ld.id))
+          .map(ld => ({
+            id: ld.id,
+            senderId: 'live-sender',
+            senderName: ld.recipient_name,
+            senderPhone: ld.recipient_phone,
+            receivedAt: ld.created_at || new Date().toISOString(),
+            hasImage: false,
+            processed: ld.status === 'Approved',
+            note: ld.message_text
+          }))
+      ];
       setWASenders(loadWASenders());
-      setWADrafts(loadWADrafts());
+      setWADrafts(mappedWADrafts);
       setBizWANumber(loadWABizNum());
       setLoading(false);
     };
@@ -1232,20 +1285,38 @@ export default function PurchasesPage() {
 
   const saveInvoice = useCallback(async (inv: Invoice, imgBlob?: Blob) => {
     if (imgBlob) await saveInvoiceImage(inv.id, imgBlob);
+
+    // Save to Supabase
+    await db.createSupplierInvoice({
+      id: inv.id,
+      store_id: store?.id || DEFAULT_STORE_ID,
+      supplier_name: inv.supplierName,
+      invoice_number: inv.invoiceNumber,
+      invoice_date: inv.invoiceDate,
+      total_amount: inv.grandTotal,
+      currency: 'GBP',
+      status: inv.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+      items: inv.lineItems,
+      image_storage_path: inv.hasImage ? `inv_${inv.id}` : undefined,
+      captured_via: 'manual'
+    });
+
     setInvoices(prev => {
       const exists = prev.find(x=>x.id===inv.id);
       const next = exists ? prev.map(x=>x.id===inv.id?inv:x) : [...prev, inv];
       saveInvoices(next); return next;
     });
     setShowInvModal(false); setEditInvoice(null);
-  }, []);
+  }, [store?.id]);
 
   const deleteInvoice = useCallback(async (id: string) => {
     await deleteInvoiceImage(id).catch(()=>{});
+    await db.deleteSupplierInvoice(id).catch(()=>{});
     setInvoices(prev => { const next=prev.filter(i=>i.id!==id); saveInvoices(next); return next; });
   }, []);
 
-  const markPaid = useCallback((id: string) => {
+  const markPaid = useCallback(async (id: string) => {
+    await db.updateSupplierInvoiceStatus(id, 'Paid').catch(()=>{});
     setInvoices(prev => {
       const next = prev.map(i=>i.id===id?{...i,paymentStatus:'paid' as PaymentStatus}:i);
       saveInvoices(next); return next;
