@@ -373,7 +373,7 @@ export default function LeadsPage() {
     if (detailLead?.id === id) setDetailLead(null);
   }
 
-  function moveStatus(id: string, status: LeadStatus) {
+  async function moveStatus(id: string, status: LeadStatus) {
     const targetLead = leads.find(l => l.id === id);
     if (!targetLead) return;
 
@@ -386,29 +386,49 @@ export default function LeadsPage() {
     let nurtureCount = targetLead.nurtureSent || 0;
 
     if (autoNurtureEnabled) {
+      const isEmail = targetLead.contactType === 'email' || targetLead.contact.includes('@');
+      const channelType: NurtureMsg['channel'] = isEmail ? 'email' : 'whatsapp';
+
       const newNurtureMsg: NurtureMsg = {
         id: uid(),
         sentAt: new Date().toISOString(),
-        channel: targetLead.contactType || 'whatsapp',
+        channel: channelType,
         content: `[Miller AI Trigger · Stage → ${status.toUpperCase()}]: ${generatedMsg}`
       };
       updatedNurture = [...updatedNurture, newNurtureMsg];
       nurtureCount += 1;
 
-      // Queue draft into WhatsApp drafts
-      db.createWhatsAppDraft({
-        store_id: store?.id || DEFAULT_STORE_ID,
-        lead_id: targetLead.id,
-        recipient_name: targetLead.name || 'Prospect',
-        recipient_phone: targetLead.contact || '',
-        message_text: generatedMsg,
-        status: 'Draft',
-        trigger_reason: `stage_change_${status}`
-      }).catch(e => console.warn('Draft creation skipped:', e));
+      // 1. Dispatch Email if email contact
+      if (isEmail) {
+        fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: targetLead.contact,
+            leadName: targetLead.name,
+            businessName: bizName,
+            status: status,
+            customMessage: generatedMsg
+          })
+        }).then(() => playNotificationChime('success')).catch(e => console.warn('Email dispatch failed:', e));
+      }
+
+      // 2. Queue draft into WhatsApp drafts if WhatsApp contact
+      if (!isEmail || targetLead.contactType === 'whatsapp') {
+        db.createWhatsAppDraft({
+          store_id: store?.id || DEFAULT_STORE_ID,
+          lead_id: targetLead.id,
+          recipient_name: targetLead.name || 'Prospect',
+          recipient_phone: targetLead.contact || '',
+          message_text: generatedMsg,
+          status: 'Draft',
+          trigger_reason: `stage_change_${status}`
+        }).catch(e => console.warn('Draft creation skipped:', e));
+      }
 
       setAiNurtureToast({
         leadName: targetLead.name || 'Lead',
-        action: templateConfig.action,
+        action: isEmail ? `Automated Email Dispatched (${templateConfig.action})` : templateConfig.action,
         msg: generatedMsg
       });
       setTimeout(() => setAiNurtureToast(null), 6000);
@@ -432,13 +452,30 @@ export default function LeadsPage() {
     db.updateLeadStatus(id, status).catch(e => console.warn('Supabase status sync skipped:', e));
   }
 
-  function triggerManualAiNurture(lead: Lead) {
+  async function triggerManualAiNurture(lead: Lead) {
     const bizName = bizProfile.businessName || store?.name || 'Our Team';
     const templateConfig = NURTURE_TEMPLATES[lead.status] || NURTURE_TEMPLATES.new;
     const generatedMsg = templateConfig.template(lead.name, bizName);
+    const isEmail = lead.contactType === 'email' || lead.contact.includes('@');
 
-    addNurtureMsg(lead.id, lead.contactType, `[Miller AI Instant Touchpoint]: ${generatedMsg}`);
+    addNurtureMsg(lead.id, isEmail ? 'email' : lead.contactType, `[Miller AI Instant Touchpoint]: ${generatedMsg}`);
 
+    // If email, dispatch live HTML email
+    if (isEmail) {
+      fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: lead.contact,
+          leadName: lead.name,
+          businessName: bizName,
+          status: lead.status,
+          customMessage: generatedMsg
+        })
+      }).then(() => playNotificationChime('success')).catch(e => console.warn('Email dispatch failed:', e));
+    }
+
+    // Queue WhatsApp draft
     db.createWhatsAppDraft({
       store_id: store?.id || DEFAULT_STORE_ID,
       lead_id: lead.id,
@@ -451,7 +488,7 @@ export default function LeadsPage() {
 
     setAiNurtureToast({
       leadName: lead.name,
-      action: 'Instant AI Follow-up Generated',
+      action: isEmail ? 'Live AI HTML Email Dispatched' : 'Instant AI Follow-up Generated',
       msg: generatedMsg
     });
     setTimeout(() => setAiNurtureToast(null), 6000);
