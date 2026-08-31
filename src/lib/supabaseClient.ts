@@ -1103,13 +1103,15 @@ export const db = {
         .eq('store_id', storeId);
       if (!error && data && data.length > 0) {
         const accMap: Record<string, { apiKey: string; apiSecret: string; storeUrl: string; status: 'disconnected' | 'connected' | 'error' | 'testing'; notes: string }> = {};
-        data.forEach(item => {
-          accMap[item.platform_id] = {
-            apiKey: item.api_key || '',
-            apiSecret: item.api_secret || '',
-            storeUrl: item.store_url || '',
-            status: (item.status as 'disconnected' | 'connected' | 'error' | 'testing') || 'disconnected',
-            notes: item.notes || ''
+        data.forEach((item: Record<string, unknown>) => {
+          const pid = (item.platform_name || item.platform_id) as string;
+          const creds = (item.credentials && typeof item.credentials === 'object' ? item.credentials : {}) as Record<string, string>;
+          accMap[pid] = {
+            apiKey: (creds.apiKey || item.api_key || '') as string,
+            apiSecret: (creds.apiSecret || item.api_secret || '') as string,
+            storeUrl: (creds.storeUrl || item.store_url || '') as string,
+            status: (item.status === 'Active' ? 'connected' : item.status === 'Inactive' ? 'disconnected' : item.status) as 'disconnected' | 'connected' | 'error' | 'testing' || 'disconnected',
+            notes: (creds.notes || item.notes || '') as string
           };
         });
         return accMap;
@@ -1121,18 +1123,20 @@ export const db = {
 
   savePlatformAccount: async (storeId: string = DEFAULT_STORE_ID, platformId: string, conn: { apiKey: string; apiSecret: string; storeUrl: string; status: string; notes: string }) => {
     const payload = {
-      id: `${storeId}_${platformId}`,
       store_id: storeId,
-      platform_id: platformId,
-      api_key: conn.apiKey,
-      api_secret: conn.apiSecret,
-      store_url: conn.storeUrl,
-      status: conn.status,
-      notes: conn.notes,
-      updated_at: new Date().toISOString()
+      platform_name: platformId,
+      account_name: platformId,
+      status: conn.status === 'connected' ? 'Active' : 'Inactive',
+      credentials: {
+        apiKey: conn.apiKey,
+        apiSecret: conn.apiSecret,
+        storeUrl: conn.storeUrl,
+        status: conn.status,
+        notes: conn.notes
+      }
     };
     if (!isMock) {
-      await supabase.from('platform_accounts').upsert([payload], { onConflict: 'store_id,platform_id' });
+      await supabase.from('platform_accounts').upsert([payload], { onConflict: 'store_id,platform_name' });
     }
     const current = getLocalStorageData<Record<string, typeof conn>>('miller_platform_conns_v1', [{}]);
     const updated = { ...(current[0] || {}), [platformId]: conn };
