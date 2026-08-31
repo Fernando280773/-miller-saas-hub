@@ -70,9 +70,14 @@ export default function PlatformLanding() {
           <Layers size={26} style={{ color: 'var(--saas-primary)' }} />
           <span>Miller Saas Hub</span>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setShowCreateModal(true)}>
-          <Plus size={16} /> Deploy Storefront
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <Link href="/login" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+            🔐 Sign In / RBAC
+          </Link>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} /> Deploy Storefront
+          </button>
+        </div>
       </header>
 
       {/* Hero Intro */}
