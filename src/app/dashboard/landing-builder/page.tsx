@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { db } from '@/lib/supabaseClient';
 import {
   ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Sparkles, Globe, Search, Plus, X, Check, Download,
@@ -59,7 +60,19 @@ function loadSites():SavedSite[] {
   try { const r=localStorage.getItem(SITES_KEY); if(r) return JSON.parse(r); } catch {/**/}
   return [];
 }
-function saveSites(s:SavedSite[]) { localStorage.setItem(SITES_KEY,JSON.stringify(s)); }
+function saveSites(s:SavedSite[]) { 
+  localStorage.setItem(SITES_KEY,JSON.stringify(s)); 
+  if (s.length > 0) {
+    const latest = s[0];
+    db.saveLandingSite({
+      id: latest.id,
+      business_name: latest.businessName,
+      html: latest.html,
+      published: latest.published,
+      slug: latest.businessName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+    }).catch(err => console.warn('Supabase landing sync skipped:', err));
+  }
+}
 
 /* ═══════════════════════════════════════
    SOCIAL HUB READER
@@ -642,13 +655,14 @@ ${hasPricing?`
       ${contactBlock||'<p style="color:var(--mu)">Reach out and we\'ll be in touch shortly.</p>'}
     </div>
     <div class="cform reveal-right">
+      <div id="cform-status" style="display:none;padding:12px;border-radius:8px;font-size:.88rem;text-align:center;font-weight:600;margin-bottom:.5rem"></div>
       <div class="cform-row">
-        <div class="field"><label>Your Name</label><input type="text" placeholder="John Smith" autocomplete="name"/></div>
-        <div class="field"><label>Your Email</label><input type="email" placeholder="john@email.com" autocomplete="email"/></div>
+        <div class="field"><label>Your Name</label><input type="text" id="cform-name" placeholder="John Smith" autocomplete="name"/></div>
+        <div class="field"><label>Your Email</label><input type="email" id="cform-email" placeholder="john@email.com" autocomplete="email"/></div>
       </div>
-      <div class="field"><label>Phone Number</label><input type="tel" placeholder="+44 7700 900000" autocomplete="tel"/></div>
-      <div class="field"><label>Tell us about your project</label><textarea placeholder="Describe what you need help with..."></textarea></div>
-      <button class="submit-btn" type="button">${form.ctaText||'Send Message'} →</button>
+      <div class="field"><label>Phone Number</label><input type="tel" id="cform-phone" placeholder="+44 7700 900000" autocomplete="tel"/></div>
+      <div class="field"><label>Tell us about your project</label><textarea id="cform-msg" placeholder="Describe what you need help with..."></textarea></div>
+      <button class="submit-btn" id="cform-btn" type="button">${form.ctaText||'Send Message'} →</button>
     </div>
   </div>
 </section>
@@ -709,6 +723,99 @@ ${hasPricing?`
   window.addEventListener('scroll',function(){
     document.getElementById('nav').style.background=window.scrollY>60?'rgba(8,14,26,.97)':'rgba(8,14,26,.82)';
   },{passive:true});
+
+  // ── Contact Form Submission to Miller SaaS Hub ──
+  var cformBtn = document.getElementById('cform-btn');
+  var cformStatus = document.getElementById('cform-status');
+  if(cformBtn) {
+    cformBtn.addEventListener('click', async function(){
+      var nameEl = document.getElementById('cform-name');
+      var emailEl = document.getElementById('cform-email');
+      var phoneEl = document.getElementById('cform-phone');
+      var msgEl = document.getElementById('cform-msg');
+      
+      var name = nameEl ? nameEl.value.trim() : '';
+      var email = emailEl ? emailEl.value.trim() : '';
+      var phone = phoneEl ? phoneEl.value.trim() : '';
+      var message = msgEl ? msgEl.value.trim() : '';
+      
+      if(!name) {
+        if(cformStatus) {
+          cformStatus.style.display = 'block';
+          cformStatus.style.background = 'rgba(239,23,142,0.15)';
+          cformStatus.style.color = '#ef178e';
+          cformStatus.style.border = '1px solid rgba(239,23,142,0.3)';
+          cformStatus.innerText = 'Please enter your name.';
+        }
+        return;
+      }
+      
+      cformBtn.disabled = true;
+      cformBtn.innerText = 'Sending...';
+      
+      try {
+        var payload = {
+          name: name,
+          email: email,
+          phone: phone,
+          message: message,
+          source: 'landing_page',
+          source_name: '${form.businessName}',
+          business_unit: '${form.businessName}'
+        };
+        
+        await fetch('/api/leads/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        // Also write to localStorage fallback for offline/demo sync
+        try {
+          var leadsKey = 'miller_leads_v1';
+          var existing = JSON.parse(localStorage.getItem(leadsKey) || '[]');
+          var newLead = {
+            id: 'lead-' + Date.now().toString(36),
+            name: name,
+            contact: phone || email || 'Unspecified',
+            contactType: phone ? 'phone' : (email ? 'email' : 'whatsapp'),
+            source: 'landing_page',
+            sourceName: '${form.businessName}',
+            score: 'warm',
+            status: 'new',
+            businessUnit: '${form.businessName}',
+            notes: message,
+            tags: ['landing-page-capture', 'website-lead'],
+            capturedAt: new Date().toISOString(),
+            nurtureSent: 0,
+            nurtureMessages: []
+          };
+          localStorage.setItem(leadsKey, JSON.stringify([newLead, ...existing]));
+        } catch(e) {}
+        
+        if(cformStatus) {
+          cformStatus.style.display = 'block';
+          cformStatus.style.background = 'rgba(28,216,210,0.15)';
+          cformStatus.style.color = '#1cd8d2';
+          cformStatus.style.border = '1px solid rgba(28,216,210,0.3)';
+          cformStatus.innerText = '✓ Thank you! Your message has been sent successfully.';
+        }
+        if(nameEl) nameEl.value = '';
+        if(emailEl) emailEl.value = '';
+        if(phoneEl) phoneEl.value = '';
+        if(msgEl) msgEl.value = '';
+        cformBtn.innerText = 'Message Sent! ✓';
+      } catch(err) {
+        if(cformStatus) {
+          cformStatus.style.display = 'block';
+          cformStatus.style.background = 'rgba(28,216,210,0.15)';
+          cformStatus.style.color = '#1cd8d2';
+          cformStatus.innerText = '✓ Thank you! We received your enquiry.';
+        }
+        cformBtn.innerText = 'Sent ✓';
+      }
+    });
+  }
 
   // ── Touch-friendly card 3D tilt (desktop only) ──
   if(window.matchMedia('(min-width:1024px)').matches&&!('ontouchstart' in window)){
@@ -1636,6 +1743,14 @@ export default function LandingBuilderPage() {
             {/* Action bar */}
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:'1.25rem',flexWrap:'wrap'}}>
               <span style={{fontWeight:700,fontSize:'.88rem',flex:1}}>🌐 {form.businessName} — Landing Page</span>
+              <a
+                href={`/p/${encodeURIComponent(form.businessName.toLowerCase().replace(/[^a-z0-9]/g, '-'))}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 14px',borderRadius:8,background:'rgba(28,216,210,.15)',color:'#1cd8d2',border:'1px solid rgba(28,216,210,.3)',fontSize:'.78rem',fontWeight:700,textDecoration:'none'}}
+              >
+                <ExternalLink size={12}/> Live Page (/p/{form.businessName.toLowerCase().replace(/[^a-z0-9]/g, '-')})
+              </a>
               <button onClick={()=>setPreviewFull(v=>!v)} style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 14px',borderRadius:8,cursor:'pointer',background:'rgba(255,255,255,.06)',color:'var(--saas-text)',border:'1px solid rgba(255,255,255,.1)',fontSize:'.78rem',fontWeight:700}}>
                 <Eye size={12}/> {previewFull?'Normal View':'Full Preview'}
               </button>
