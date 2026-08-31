@@ -133,6 +133,16 @@ ALTER TABLE public.ai_agent_configs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_drafts   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.supplier_invoices ENABLE ROW LEVEL SECURITY;
 
+-- Enable Supabase Realtime WebSocket Broadcasting
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.leads, public.supplier_invoices, public.whatsapp_drafts;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- =====================================================================
 -- 6. STORE MEMBERSHIPS  ·  ★ FIX #1: store_id is UUID (was TEXT)
 --    A TEXT column cannot reference a UUID primary key — that mismatch

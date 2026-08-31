@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID, supabase } from '../../../lib/supabaseClient';
 import { saveInvoiceImage, getInvoiceImage, deleteInvoiceImage } from '../../../lib/invoiceDb';
+import { playNotificationChime } from '../../../lib/audioChime';
 import {
   Plus, X, ChevronDown, ChevronUp, Eye, EyeOff, Save,
   Upload, Camera, FileText, CheckCircle, Clock, AlertCircle,
@@ -1169,6 +1170,7 @@ export default function PurchasesPage() {
   const [editSupplier, setEditSupplier] = useState<Supplier|null>(null);
   const [showInvModal, setShowInvModal] = useState(false);
   const [editInvoice, setEditInvoice]   = useState<Invoice|null>(null);
+  const [liveInvoiceToast, setLiveInvoiceToast] = useState<{ supplierName: string; invoiceNumber: string; amount: number; via: string } | null>(null);
   const [catGroupOpen, setCatGroupOpen] = useState<Record<string,boolean>>({ cash_carry:true });
   const [supSearch, setSupSearch] = useState('');
   const [waSenders, setWASenders] = useState<WASender[]>([]);
@@ -1210,7 +1212,7 @@ export default function PurchasesPage() {
             subtotal: li.total_amount,
             vat: 0,
             grandTotal: li.total_amount,
-            paymentMethod: 'bank_transfer' as PaymentMethod,
+            paymentMethod: 'bacs' as PaymentMethod,
             paymentStatus: (li.status === 'Paid' ? 'paid' : 'unpaid') as PaymentStatus,
             hasImage: !!li.image_storage_path,
             notes: `Captured via ${li.captured_via || 'live integration'}`,
@@ -1244,6 +1246,69 @@ export default function PurchasesPage() {
     };
     load();
   }, []);
+
+  // ── Supabase Realtime Channel: Instant Inbound Invoice Push ──────────────
+  useEffect(() => {
+    const targetStoreId = store?.id || DEFAULT_STORE_ID;
+
+    const channel = supabase
+      .channel(`realtime_invoices_${targetStoreId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'supplier_invoices',
+          filter: `store_id=eq.${targetStoreId}`
+        },
+        (payload) => {
+          const newRow = payload.new as Record<string, unknown>;
+          if (!newRow) return;
+
+          const mappedInvoice: Invoice = {
+            id: (newRow.id as string) || `inv-${Date.now()}`,
+            supplierId: 'sup-live',
+            supplierName: (newRow.supplier_name as string) || 'Wholesale Supplier',
+            category: 'cash_carry',
+            invoiceNumber: (newRow.invoice_number as string) || `INV-${Date.now().toString().slice(-4)}`,
+            invoiceDate: (newRow.invoice_date as string) || new Date().toISOString().split('T')[0],
+            dueDate: (newRow.invoice_date as string) || new Date().toISOString().split('T')[0],
+            lineItems: Array.isArray(newRow.items) ? (newRow.items as LineItem[]) : [],
+            subtotal: (newRow.total_amount as number) || 0,
+            vat: 0,
+            grandTotal: (newRow.total_amount as number) || 0,
+            paymentMethod: 'bacs',
+            paymentStatus: (newRow.status === 'Paid' ? 'paid' : 'unpaid'),
+            hasImage: !!newRow.image_storage_path,
+            notes: `Captured via ${(newRow.captured_via as string) || 'whatsapp'}`,
+            createdAt: (newRow.created_at as string) || new Date().toISOString()
+          };
+
+          // Play melodious triple-tone notification chime
+          playNotificationChime('invoice');
+
+          // Trigger live toast
+          setLiveInvoiceToast({
+            supplierName: mappedInvoice.supplierName,
+            invoiceNumber: mappedInvoice.invoiceNumber,
+            amount: mappedInvoice.grandTotal,
+            via: (newRow.captured_via as string) || 'whatsapp'
+          });
+          setTimeout(() => setLiveInvoiceToast(null), 7000);
+
+          // Prepend to invoices state immediately
+          setInvoices((prev) => {
+            if (prev.some((i) => i.id === mappedInvoice.id)) return prev;
+            return [mappedInvoice, ...prev];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [store?.id]);
 
   const updateWASenders = useCallback((next: WASender[]) => {
     setWASenders(next);
@@ -1349,6 +1414,59 @@ export default function PurchasesPage() {
       <DashboardSidebar storeName={store?.name} storeLogo={store?.logo_text}/>
 
       <main className="dashboard-content">
+
+        {/* ── Realtime Inbound Invoice Alert ── */}
+        {liveInvoiceToast && (
+          <div style={{
+            marginBottom: '1.5rem',
+            padding: '1rem 1.4rem',
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(99,102,241,0.25))',
+            border: '1px solid rgba(16,185,129,0.45)',
+            borderRadius: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 10px 35px rgba(16,185,129,0.2)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #10B981, #6366F1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+              boxShadow: '0 0 15px rgba(16,185,129,0.5)'
+            }}>
+              🧾
+            </div>
+            <div style={{ flex: 1, fontSize: '0.86rem' }}>
+              <div style={{ fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Inbound Invoice Captured in Realtime!</span>
+                <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.15)', padding: '2px 7px', borderRadius: 12 }}>
+                  {liveInvoiceToast.via.toUpperCase()}
+                </span>
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
+                <strong>{liveInvoiceToast.supplierName}</strong> (#{liveInvoiceToast.invoiceNumber}) — <span style={{ color: '#34d399', fontWeight: 700 }}>£{liveInvoiceToast.amount.toFixed(2)}</span> has been booked into the ledger.
+              </div>
+            </div>
+            <button
+              onClick={() => setLiveInvoiceToast(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.6)',
+                cursor: 'pointer',
+                fontSize: '1.1rem'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── Header ── */}
         <div style={{

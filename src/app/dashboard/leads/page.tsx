@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID, supabase } from '../../../lib/supabaseClient';
 import { getLandingSites, getAgentStatuses, readBusinessProfile, AgentStatus, LandingSite } from '../../../lib/millerEcosystem';
+import { playNotificationChime } from '../../../lib/audioChime';
 
 /* ─── Types ─────────────────────────────────────────────── */
 type LeadSource   = 'whatsapp'|'landing_page'|'social'|'platform'|'referral'|'manual';
@@ -177,6 +178,7 @@ export default function LeadsPage() {
   // Automated Nurture State
   const [autoNurtureEnabled, setAutoNurtureEnabled] = useState(true);
   const [aiNurtureToast, setAiNurtureToast] = useState<{ leadName: string; action: string; msg: string } | null>(null);
+  const [liveRealtimeToast, setLiveRealtimeToast] = useState<{ name: string; source: string; score: string; contact: string } | null>(null);
   // Ecosystem state
   const [landingSites, setLandingSites] = useState<LandingSite[]>([]);
   const [agentStatuses, setAgentStatuses] = useState<AgentStatus[]>([]);
@@ -208,6 +210,91 @@ export default function LeadsPage() {
     };
     load();
   }, []);
+
+  // ── Supabase Realtime Channel: Instant Lead Push ──────────────────────────
+  useEffect(() => {
+    const targetStoreId = store?.id || DEFAULT_STORE_ID;
+
+    const channel = supabase
+      .channel(`realtime_leads_${targetStoreId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'leads',
+          filter: `store_id=eq.${targetStoreId}`
+        },
+        (payload) => {
+          const newRow = payload.new as Record<string, unknown>;
+          if (!newRow) return;
+
+          const mappedLead: Lead = {
+            id: (newRow.id as string) || `lead-${Date.now()}`,
+            name: (newRow.name as string) || 'New Prospect',
+            contact: (newRow.contact as string) || '',
+            contactType: (newRow.contact_type as ContactType) || 'whatsapp',
+            source: (newRow.source as LeadSource) || 'landing_page',
+            sourceName: (newRow.source_name as string) || 'Live Capture',
+            score: (newRow.score as LeadScore) || 'warm',
+            status: (newRow.status as LeadStatus) || 'new',
+            businessUnit: (newRow.business_unit as string) || '',
+            notes: (newRow.notes as string) || '',
+            tags: (newRow.tags as string[]) || ['realtime-captured'],
+            estimatedValue: (newRow.estimated_value as number) || 0,
+            nextAction: (newRow.next_action as string) || '',
+            nextActionDate: (newRow.next_action_date as string) || '',
+            lastContactedAt: (newRow.last_contacted_at as string) || '',
+            nurtureSent: (newRow.nurture_sent as number) || 0,
+            nurtureMessages: (newRow.nurture_messages as NurtureMsg[]) || [],
+            capturedAt: (newRow.created_at as string) || new Date().toISOString()
+          };
+
+          // Play high-frequency pleasant notification chime
+          playNotificationChime('lead');
+
+          // Trigger live glassmorphic notification banner
+          setLiveRealtimeToast({
+            name: mappedLead.name,
+            source: mappedLead.source,
+            score: mappedLead.score,
+            contact: mappedLead.contact
+          });
+          setTimeout(() => setLiveRealtimeToast(null), 7000);
+
+          // Prepend directly into CRM state without page refresh
+          setLeads((prev) => {
+            if (prev.some((l) => l.id === mappedLead.id)) return prev;
+            return [mappedLead, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'leads',
+          filter: `store_id=eq.${targetStoreId}`
+        },
+        (payload) => {
+          const updatedRow = payload.new as Record<string, unknown>;
+          if (!updatedRow) return;
+          setLeads((prev) =>
+            prev.map((l) =>
+              l.id === updatedRow.id
+                ? { ...l, status: (updatedRow.status as LeadStatus) || l.status, score: (updatedRow.score as LeadScore) || l.score }
+                : l
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [store?.id]);
 
   const persist = useCallback((next: Lead[]) => {
     setLeads(next);
@@ -435,6 +522,59 @@ export default function LeadsPage() {
           </button>
         </div>
       </div>
+
+      {/* Live Inbound Lead Realtime Alert */}
+      {liveRealtimeToast && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '0.9rem 1.3rem',
+          background: 'linear-gradient(135deg, rgba(239,23,142,0.2), rgba(142,84,233,0.25))',
+          border: '1px solid rgba(239,23,142,0.45)',
+          borderRadius: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 10px 35px rgba(239,23,142,0.25)',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: 'linear-gradient(135deg, #EF178E, #8E54E9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.2rem',
+            boxShadow: '0 0 15px rgba(239,23,142,0.5)'
+          }}>
+            ⚡
+          </div>
+          <div style={{ flex: 1, fontSize: '0.85rem' }}>
+            <div style={{ fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Live Inbound Lead Captured!</span>
+              <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.15)', padding: '2px 7px', borderRadius: 12 }}>
+                {liveRealtimeToast.source.toUpperCase()}
+              </span>
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+              <strong>{liveRealtimeToast.name}</strong> ({liveRealtimeToast.contact}) has entered the pipeline.
+            </div>
+          </div>
+          <button
+            onClick={() => setLiveRealtimeToast(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.6)',
+              cursor: 'pointer',
+              fontSize: '1.1rem'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* AI Nurture Toast Banner */}
       {aiNurtureToast && (
