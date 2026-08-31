@@ -21,14 +21,7 @@ export default function PublicLandingPage() {
 
     const loadSite = async () => {
       try {
-        const sites = await db.getLandingSites('store-1');
-        // Match by slug or id or sanitized business_name
-        const match = sites.find(s => 
-          s.slug?.toLowerCase() === slug.toLowerCase() ||
-          s.id.toLowerCase() === slug.toLowerCase() ||
-          s.business_name.toLowerCase().replace(/[^a-z0-9]/g, '-') === slug.toLowerCase()
-        ) || null;
-
+        const match = await db.getLandingSiteBySlug(slug);
         if (match) {
           setSite(match);
         }

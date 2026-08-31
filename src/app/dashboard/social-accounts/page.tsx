@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { createLeadFromAgent, addLeadToPipeline, countAgentLeads, readBusinessProfile } from '../../../lib/millerEcosystem';
 import {
   Eye, Send, TrendingUp, Bell, FileText,
@@ -963,7 +963,7 @@ export default function SocialAccountsPage() {
 
   useEffect(() => {
     const load = async () => {
-      let id = 'store-1';
+      let id = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const s = localStorage.getItem('active_store_id');
         if (s) id = s;

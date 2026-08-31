@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
 import IntegrationsList from '../../../components/IntegrationsList';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 
 export default function IntegrationsPage() {
   const [store, setStore] = useState<Store | null>(null);
@@ -12,7 +12,7 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const loadStore = async () => {
       setLoading(true);
-      let activeId = 'store-1';
+      let activeId = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('active_store_id');
         if (saved) activeId = saved;

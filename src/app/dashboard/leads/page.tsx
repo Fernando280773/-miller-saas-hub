@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { getLandingSites, getAgentStatuses, readBusinessProfile, AgentStatus, LandingSite } from '../../../lib/millerEcosystem';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -184,7 +184,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     const load = async () => {
-      let id = 'store-1';
+      let id = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const s = localStorage.getItem('active_store_id');
         if (s) id = s;
@@ -281,7 +281,7 @@ export default function LeadsPage() {
 
       // Queue draft into WhatsApp drafts
       db.createWhatsAppDraft({
-        store_id: store?.id || 'store-1',
+        store_id: store?.id || DEFAULT_STORE_ID,
         lead_id: targetLead.id,
         recipient_name: targetLead.name || 'Prospect',
         recipient_phone: targetLead.contact || '',
@@ -324,7 +324,7 @@ export default function LeadsPage() {
     addNurtureMsg(lead.id, lead.contactType, `[Miller AI Instant Touchpoint]: ${generatedMsg}`);
 
     db.createWhatsAppDraft({
-      store_id: store?.id || 'store-1',
+      store_id: store?.id || DEFAULT_STORE_ID,
       lead_id: lead.id,
       recipient_name: lead.name,
       recipient_phone: lead.contact,

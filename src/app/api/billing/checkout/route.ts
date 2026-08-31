@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { planId, billingCycle = 'monthly', storeId = 'store-1' } = await req.json();
+    const { planId, billingCycle = 'monthly', storeId = '00000000-0000-0000-0000-000000000001' } = await req.json();
 
     const PLANS: Record<string, { name: string; monthlyPrice: number; yearlyPrice: number }> = {
       starter: { name: 'Starter Tier', monthlyPrice: 29, yearlyPrice: 290 },

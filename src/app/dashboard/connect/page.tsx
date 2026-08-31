@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import {
   ExternalLink, ChevronDown, ChevronUp, Save, Eye, EyeOff,
   CheckCircle, XCircle, Wifi, WifiOff, Loader, BookOpen,
@@ -737,7 +737,7 @@ export default function ConnectPage() {
 
   useEffect(() => {
     const load = async () => {
-      let activeId = 'store-1';
+      let activeId = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('active_store_id');
         if (saved) activeId = saved;

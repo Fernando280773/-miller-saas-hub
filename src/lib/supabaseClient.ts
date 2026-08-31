@@ -202,7 +202,7 @@ const MOCK_STORES: Store[] = [
 const MOCK_PRODUCTS: Product[] = [
   {
     id: 'p1',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Speckled Ceramic Mug',
     price: 24.00,
     category: 'Beverages',
@@ -212,7 +212,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'p2',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Merino Wool Throw',
     price: 89.00,
     category: 'Apparel',
@@ -222,7 +222,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'p3',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Custom Mechanical Keyboard',
     price: 189.00,
     category: 'Electronics',
@@ -235,7 +235,7 @@ const MOCK_PRODUCTS: Product[] = [
 const MOCK_ORDERS: Order[] = [
   {
     id: 'ord-1',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     customer_name: 'Alex Rivers',
     customer_email: 'alex.rivers@gmail.com',
     total: 48.00,
@@ -245,7 +245,7 @@ const MOCK_ORDERS: Order[] = [
   },
   {
     id: 'ord-2',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     customer_name: 'Samantha Green',
     customer_email: 'sam.green@outlook.com',
     total: 69.00,
@@ -258,7 +258,7 @@ const MOCK_ORDERS: Order[] = [
 const MOCK_INTEGRATIONS: Integration[] = [
   {
     id: 'int-1',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Stripe Gateway',
     type: 'payment',
     status: 'Active',
@@ -266,7 +266,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-2',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Website Web Scraper',
     type: 'scraper',
     status: 'Inactive',
@@ -274,7 +274,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-3',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'eBay Platform',
     type: 'ebay',
     status: 'Inactive',
@@ -282,7 +282,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-4',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Uber Eats',
     type: 'food_delivery',
     status: 'Inactive',
@@ -290,7 +290,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-5',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Just Eat',
     type: 'food_delivery',
     status: 'Inactive',
@@ -298,7 +298,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-6',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Amazon Connector',
     type: 'amazon',
     status: 'Inactive',
@@ -306,7 +306,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-7',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Alibaba Importer',
     type: 'alibaba',
     status: 'Inactive',
@@ -314,7 +314,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-8',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Logistics Connector',
     type: 'logistics',
     status: 'Inactive',
@@ -322,7 +322,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-9',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'WhatsApp Business',
     type: 'whatsapp',
     status: 'Inactive',
@@ -330,7 +330,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-10',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Google My Business',
     type: 'google_business',
     status: 'Inactive',
@@ -338,7 +338,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-11',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Mailchimp Marketing',
     type: 'email_marketing',
     status: 'Inactive',
@@ -346,7 +346,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-12',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Xero Accounting',
     type: 'accounting',
     status: 'Inactive',
@@ -354,7 +354,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-13',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Square POS',
     type: 'pos',
     status: 'Inactive',
@@ -362,7 +362,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-14',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Telegram Notifications',
     type: 'telegram',
     status: 'Inactive',
@@ -370,7 +370,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-15',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'GoCardless',
     type: 'gocardless',
     status: 'Inactive',
@@ -378,7 +378,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-16',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'TrueLayer',
     type: 'truelayer',
     status: 'Inactive',
@@ -386,7 +386,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-17',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Volt',
     type: 'volt',
     status: 'Inactive',
@@ -394,7 +394,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-18',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Banked',
     type: 'banked',
     status: 'Inactive',
@@ -402,7 +402,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-19',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Tink (Visa)',
     type: 'tink',
     status: 'Inactive',
@@ -410,7 +410,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
   },
   {
     id: 'int-20',
-    store_id: 'store-1',
+    store_id: DEFAULT_STORE_ID,
     name: 'Lead Capture Form',
     type: 'lead_capture',
     status: 'Inactive',
@@ -673,7 +673,7 @@ export const db = {
   // ==========================================
   // v2 Lead Management CRM Operations
   // ==========================================
-  getLeads: async (storeId: string = 'store-1'): Promise<Lead[]> => {
+  getLeads: async (storeId: string = DEFAULT_STORE_ID): Promise<Lead[]> => {
     if (!isMock) {
       const { data, error } = await supabase.from('leads').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as Lead[];
@@ -727,7 +727,7 @@ export const db = {
     const fullLead: Lead = {
       ...lead,
       id,
-      store_id: lead.store_id || 'store-1',
+      store_id: lead.store_id || DEFAULT_STORE_ID,
       score: lead.score || 'cold',
       status: lead.status || 'new',
       created_at: lead.created_at || new Date().toISOString()
@@ -796,7 +796,7 @@ export const db = {
   // ==========================================
   // v2 Landing Sites Engine Operations
   // ==========================================
-  getLandingSites: async (storeId: string = 'store-1'): Promise<LandingSite[]> => {
+  getLandingSites: async (storeId: string = DEFAULT_STORE_ID): Promise<LandingSite[]> => {
     if (!isMock) {
       const { data, error } = await supabase.from('landing_sites').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as LandingSite[];
@@ -821,11 +821,51 @@ export const db = {
     }));
   },
 
+  getLandingSiteBySlug: async (slug: string): Promise<LandingSite | null> => {
+    if (!isMock) {
+      const { data, error } = await supabase
+        .from('landing_sites')
+        .select('*')
+        .eq('slug', slug)
+        .eq('published', true)
+        .single();
+      if (!error && data) return data as LandingSite;
+    }
+    interface RawStorageSite {
+      id: string;
+      businessName?: string;
+      slug?: string;
+      createdAt?: string;
+      updatedAt?: string;
+      published?: boolean;
+      html?: string;
+    }
+    const raw = getLocalStorageData<RawStorageSite>('miller_landing_sites_v1', []);
+    const match = raw.find((s: RawStorageSite) => 
+      s.slug?.toLowerCase() === slug.toLowerCase() || 
+      s.id.toLowerCase() === slug.toLowerCase() ||
+      s.businessName?.toLowerCase().replace(/[^a-z0-9]/g, '-') === slug.toLowerCase()
+    );
+    if (match) {
+      return {
+        id: match.id,
+        store_id: DEFAULT_STORE_ID,
+        business_name: match.businessName || 'Merchant',
+        slug: match.slug || slug,
+        published: match.published ?? true,
+        html: match.html || '',
+        created_at: match.createdAt || new Date().toISOString(),
+        updated_at: match.updatedAt || new Date().toISOString(),
+      };
+    }
+    return null;
+  },
+
   saveLandingSite: async (site: Partial<LandingSite> & { html: string; business_name: string }): Promise<LandingSite> => {
     const id = site.id || `site-${Date.now().toString(36)}`;
     const fullSite: LandingSite = {
       id,
-      store_id: site.store_id || 'store-1',
+      store_id: site.store_id || DEFAULT_STORE_ID,
       business_name: site.business_name,
       slug: site.slug || site.business_name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       published: site.published ?? true,
@@ -869,7 +909,7 @@ export const db = {
   // ==========================================
   // v2 WhatsApp Drafts Operations
   // ==========================================
-  getWhatsAppDrafts: async (storeId: string = 'store-1'): Promise<WhatsAppDraft[]> => {
+  getWhatsAppDrafts: async (storeId: string = DEFAULT_STORE_ID): Promise<WhatsAppDraft[]> => {
     if (!isMock) {
       const { data, error } = await supabase.from('whatsapp_drafts').select('*').eq('store_id', storeId).order('created_at', { ascending: false });
       if (!error && data) return data as WhatsAppDraft[];
@@ -925,4 +965,5 @@ export const db = {
     return fullDraft;
   }
 };
+
 

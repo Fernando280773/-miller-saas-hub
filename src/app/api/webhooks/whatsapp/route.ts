@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, db } from '@/lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+import { db, DEFAULT_STORE_ID } from '@/lib/supabaseClient';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'miller_saas_hub_webhook_secret';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yqeffqndvdstmhihzlgn.supabase.co';
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Server-side service-role client for background webhook writes (bypasses RLS)
+const serviceSupabase = createClient(supabaseUrl, serviceKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
 
 // ── GET: Meta WhatsApp Webhook Verification ─────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -75,7 +83,7 @@ export async function POST(req: NextRequest) {
     let messageText = '';
     let messageType = 'text';
     let mediaUrl = '';
-    let storeId = 'store-1';
+    let storeId = DEFAULT_STORE_ID;
 
     // 1. Check if Meta Graph API webhook format
     if (body.object === 'whatsapp_business_account' && body.entry?.[0]?.changes?.[0]?.value) {
@@ -108,7 +116,7 @@ export async function POST(req: NextRequest) {
       messageText = body.text || body.message || '';
       messageType = body.type || (body.media_url ? 'image' : 'text');
       mediaUrl = body.media_url || '';
-      storeId = body.store_id || 'store-1';
+      storeId = body.store_id || DEFAULT_STORE_ID;
     }
 
     const lowerText = messageText.toLowerCase();
@@ -143,11 +151,11 @@ export async function POST(req: NextRequest) {
         captured_via: 'whatsapp' as const
       };
 
-      // 1. Insert into Supabase supplier_invoices if live DB configured
+      // 1. Insert with service-role client (bypasses RLS for server-side webhook ingestion)
       try {
-        await supabase.from('supplier_invoices').insert([invoicePayload]);
+        await serviceSupabase.from('supplier_invoices').insert([invoicePayload]);
       } catch (dbErr) {
-        console.warn('Supabase supplier_invoices insert skipped:', dbErr);
+        console.warn('Service role supplier_invoices insert fallback:', dbErr);
       }
 
       // 2. Insert WhatsApp draft confirmation
@@ -174,7 +182,7 @@ export async function POST(req: NextRequest) {
     // ══════════════════════════════════════════════════════════════════════════
     const score = scoreLeadInquiry(messageText);
 
-    // 1. Create Lead in CRM
+    // 1. Create Lead in CRM with Service Role
     const newLead = await db.createLead({
       store_id: storeId,
       name: senderName,
@@ -187,6 +195,12 @@ export async function POST(req: NextRequest) {
       notes: `Inbound WhatsApp: "${messageText}"`,
       tags: ['whatsapp-inbound', score, 'auto-captured']
     });
+
+    try {
+      await serviceSupabase.from('leads').upsert([newLead]);
+    } catch (dbErr) {
+      console.warn('Service role lead upsert fallback:', dbErr);
+    }
 
     // 2. Generate Miller AI Draft Response
     const autoReplyText = `Hi ${senderName}, thank you for contacting us! We received your message: "${messageText.slice(0, 60)}...". Our team is reviewing this right now and will get back to you shortly.`;

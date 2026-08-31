@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store, Order } from '../../../lib/supabaseClient';
+import { db, Store, Order, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { ShoppingBag, Clock, CheckCircle, Truck, Check } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -13,7 +13,7 @@ export default function OrdersPage() {
   useEffect(() => {
     const loadStoreAndOrders = async () => {
       setLoading(true);
-      let activeId = 'store-1';
+      let activeId = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('active_store_id');
         if (saved) activeId = saved;

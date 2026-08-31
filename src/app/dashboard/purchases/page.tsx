@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { saveInvoiceImage, getInvoiceImage, deleteInvoiceImage } from '../../../lib/invoiceDb';
 import {
   Plus, X, ChevronDown, ChevronUp, Eye, EyeOff, Save,
@@ -1177,7 +1177,7 @@ export default function PurchasesPage() {
 
   useEffect(() => {
     const load = async () => {
-      let id = 'store-1';
+      let id = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') { const s = localStorage.getItem('active_store_id'); if(s) id=s; }
       const stores = await db.getStores();
       const cur = stores.find(s=>s.id===id)||stores[0];

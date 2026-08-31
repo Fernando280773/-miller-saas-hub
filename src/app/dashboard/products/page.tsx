@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store, Product } from '../../../lib/supabaseClient';
+import { db, Store, Product, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import { Plus, Trash, Edit, Search, Tag, X, Check, Video, Upload, Image } from 'lucide-react';
 import CompetitorMonitor from '../../../components/CompetitorMonitor';
 import VideoThumb from '../../../components/VideoThumb';
@@ -164,7 +164,7 @@ export default function ProductsPage() {
   useEffect(() => {
     const loadStoreAndProducts = async () => {
       setLoading(true);
-      let activeId = 'store-1';
+      let activeId = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('active_store_id');
         if (saved) activeId = saved;

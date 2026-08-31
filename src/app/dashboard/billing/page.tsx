@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardSidebar from '../../../components/DashboardSidebar';
-import { db, Store } from '../../../lib/supabaseClient';
+import { db, Store, DEFAULT_STORE_ID } from '../../../lib/supabaseClient';
 import {
   CreditCard,
   CheckCircle,
@@ -43,7 +43,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     const load = async () => {
-      let id = 'store-1';
+      let id = DEFAULT_STORE_ID;
       if (typeof window !== 'undefined') {
         const s = localStorage.getItem('active_store_id');
         if (s) id = s;
@@ -78,7 +78,7 @@ export default function BillingPage() {
         body: JSON.stringify({
           planId,
           billingCycle,
-          storeId: store?.id || 'store-1'
+          storeId: store?.id || DEFAULT_STORE_ID
         })
       });
 
