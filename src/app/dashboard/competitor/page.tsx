@@ -35,10 +35,6 @@ export default function CompetitorPricingPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ productId: '', competitorName: '', competitorUrl: '', price: '' });
 
-  useEffect(() => {
-    loadStoreAndTelemetry();
-  }, []);
-
   const loadStoreAndTelemetry = async () => {
     setLoading(true);
     const allStores = await db.getStores();
@@ -65,6 +61,10 @@ export default function CompetitorPricingPage() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadStoreAndTelemetry();
+  }, []);
 
   const handleReprice = async (productId: string, newPrice: number) => {
     const success = await db.updateProduct(productId, { price: newPrice });

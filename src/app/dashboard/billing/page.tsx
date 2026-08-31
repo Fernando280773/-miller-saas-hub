@@ -101,7 +101,7 @@ export default function BillingPage() {
           setToastMsg(`🎉 Subscription upgraded to ${planId.toUpperCase()} Tier (${billingCycle})!`);
           setTimeout(() => setToastMsg(null), 5000);
         } else {
-          window.location.href = data.url;
+          window.location.assign(data.url);
         }
       }
     } catch (err) {

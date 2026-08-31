@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db, DEFAULT_STORE_ID } from '@/lib/supabaseClient';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'miller_saas_hub_webhook_secret';
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yqeffqndvdstmhihzlgn.supabase.co';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-service-key';
 
 // Server-side service-role client for background webhook writes (bypasses RLS)
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  if (mode === 'subscribe' && (token === VERIFY_TOKEN || token === 'miller_saas_hub_webhook_secret')) {
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     return new NextResponse(challenge, {
       status: 200,
       headers: { 'Content-Type': 'text/plain' },
