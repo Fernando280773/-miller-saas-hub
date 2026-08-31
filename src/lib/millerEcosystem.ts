@@ -20,49 +20,26 @@ export const ECOSYSTEM_KEYS = {
   waDrafts: WA_DRAFTS_KEY,
 };
 
-/* ─── Shared mini-types (avoid import cycles) ─── */
-export type LeadScore  = 'hot' | 'warm' | 'cold';
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost';
-export type LeadSource = 'whatsapp' | 'landing_page' | 'social' | 'platform' | 'referral' | 'manual';
-
-export interface EcosystemLead {
-  id: string;
-  name: string;
-  contact: string;
-  contactType: 'whatsapp' | 'email' | 'phone';
-  source: LeadSource;
-  sourceName?: string;       // e.g. site name, platform name
-  score: LeadScore;
-  status: LeadStatus;
-  businessUnit?: string;
-  notes: string;
-  tags: string[];
-  capturedAt: string;
-  lastContactedAt?: string;
-  nextActionDate?: string;
-  nextAction?: string;
-  estimatedValue?: number;
-  nurtureSent: number;
-  nurtureMessages: unknown[];
-}
-
-export interface LandingSite {
-  id: string;
-  businessName: string;
-  createdAt: string;
-  updatedAt: string;
-  published: boolean;
-  html: string;
-}
-
-export interface BusinessProfile {
-  businessName?: string;
-  industry?: string;
-  location?: string;
-  phone?: string;
-  email?: string;
-  tagline?: string;
-}
+/* ─── Shared types — single source of truth in ./types ─── */
+import type {
+  LeadScore,
+  EcosystemLead,
+  StoredLandingSite,
+  BusinessProfile,
+  AgentStatus,
+} from './types';
+export type {
+  LeadScore,
+  LeadStatus,
+  LeadSource,
+  EcosystemLead,
+  StoredLandingSite,
+  BusinessProfile,
+  AgentStatus,
+} from './types';
+// Back-compat alias: the ecosystem bridge historically exported LandingSite.
+// Re-export it as StoredLandingSite for new code, keep the old name working.
+export type { StoredLandingSite as LandingSite } from './types';
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -78,7 +55,7 @@ export function readBusinessProfile(): BusinessProfile {
 }
 
 /* ─── Landing Sites ────────────────────────── */
-export function getLandingSites(): LandingSite[] {
+export function getLandingSites(): StoredLandingSite[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(SITES_KEY);
@@ -166,14 +143,6 @@ export function addLeadToPipeline(lead: Omit<EcosystemLead, 'id'>): EcosystemLea
 }
 
 /* ─── Agents ───────────────────────────────── */
-export interface AgentStatus {
-  id: string;
-  label: string;
-  emoji: string;
-  enabled: boolean;
-  tasksDone: number;
-}
-
 export function getAgentStatuses(): AgentStatus[] {
   if (typeof window === 'undefined') return [];
   try {

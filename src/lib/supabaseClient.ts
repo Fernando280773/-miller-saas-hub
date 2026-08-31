@@ -17,154 +17,37 @@ export const supabase = createClient(
 // High-Fidelity Mock Database Engine (Offline Mode)
 // ==========================================
 
-export interface Store {
-  id: string;
-  name: string;
-  subdomain: string;
-  logo_text: string;
-  primary_color: string;
-  secondary_color: string;
-  bg_color: string;
-  text_color: string;
-  btn_color: string;
-  layout: string;
-  description: string;
-}
-
-export interface Product {
-  id: string;
-  store_id: string;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  stock: number;
-  image: string;
-  image_url?: string;
-}
-
-export interface Order {
-  id: string;
-  store_id: string;
-  customer_name: string;
-  customer_email: string;
-  total: number;
-  status: 'Pending' | 'Shipped' | 'Delivered';
-  shipping_address: string;
-  created_at: string;
-}
-
-export interface Integration {
-  id: string;
-  store_id: string;
-  name: string;
-  type: string;
-  status: 'Active' | 'Inactive';
-  config: Record<string, string>;
-}
-
-export interface CompetitorPricing {
-  id: string;
-  product_id: string;
-  competitor_name: string;
-  competitor_url: string;
-  price: number;
-  is_active: boolean;
-}
-
-export interface Lead {
-  id: string;
-  store_id: string;
-  name: string;
-  contact: string;
-  contact_type: 'whatsapp' | 'email' | 'phone';
-  source: 'whatsapp' | 'landing_page' | 'social' | 'platform' | 'referral' | 'manual';
-  source_name?: string;
-  score: 'hot' | 'warm' | 'cold';
-  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost';
-  business_unit?: string;
-  notes?: string;
-  tags?: string[];
-  estimated_value?: number;
-  next_action?: string;
-  next_action_date?: string;
-  last_contacted_at?: string;
-  nurture_sent?: number;
-  nurture_messages?: unknown[];
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface LandingSite {
-  id: string;
-  store_id: string;
-  business_name: string;
-  slug?: string;
-  title?: string;
-  published: boolean;
-  html: string;
-  page_type?: string;
-  views_count?: number;
-  leads_count?: number;
-  custom_domain?: string;
-  metadata?: Record<string, unknown>;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface AiAgentConfig {
-  id: string;
-  store_id: string;
-  agent_id: 'monitor' | 'post' | 'reply' | 'growth' | 'alert' | string;
-  label: string;
-  emoji?: string;
-  enabled: boolean;
-  tasks_done: number;
-  config?: Record<string, unknown>;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface WhatsAppDraft {
-  id: string;
-  store_id: string;
-  lead_id?: string;
-  recipient_name: string;
-  recipient_phone: string;
-  message_text: string;
-  status: 'Draft' | 'Approved' | 'Sent' | 'Failed';
-  media_url?: string;
-  trigger_reason?: string;
-  created_at?: string;
-}
-
-export interface SupplierInvoice {
-  id: string;
-  store_id: string;
-  supplier_name: string;
-  invoice_number?: string;
-  invoice_date?: string;
-  total_amount: number;
-  currency?: string;
-  status: 'Pending' | 'Verified' | 'Paid';
-  items?: unknown[];
-  image_storage_path?: string;
-  captured_via?: 'whatsapp' | 'manual' | 'email' | 'scan';
-  created_at?: string;
-}
-
-export interface PlatformAccount {
-  id: string;
-  store_id: string;
-  platform_id: string;
-  api_key?: string;
-  api_secret?: string;
-  store_url?: string;
-  status: 'disconnected' | 'connected' | 'error' | 'testing';
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+// Domain entity types — single source of truth in ./types (re-exported
+// here so existing imports of `{ Store, Product, ... } from '@/lib/supabaseClient'`
+// keep working).
+import type {
+  Store,
+  Product,
+  Order,
+  Integration,
+  CompetitorPricing,
+  Lead,
+  LandingSite,
+  AiAgentConfig,
+  WhatsAppDraft,
+  SupplierInvoice,
+} from './types';
+export type {
+  Store,
+  Product,
+  Order,
+  Integration,
+  CompetitorPricing,
+  Lead,
+  LandingSite,
+  AiAgentConfig,
+  WhatsAppDraft,
+  SupplierInvoice,
+  PlatformAccount,
+  LeadScore,
+  LeadStatus,
+  LeadSource,
+} from './types';
 
 
 export const DEFAULT_STORE_ID = '00000000-0000-0000-0000-000000000001';
@@ -693,6 +576,7 @@ export const db = {
     }
     interface RawStorageLead {
       id: string;
+      storeId?: string;
       name: string;
       contact?: string;
       contactType?: 'whatsapp' | 'email' | 'phone';
@@ -712,7 +596,10 @@ export const db = {
       capturedAt?: string;
     }
     const raw = getLocalStorageData<RawStorageLead>('miller_leads_v1', []);
-    return raw.map((l: RawStorageLead) => ({
+    // Tenant isolation: legacy items without a storeId belong to the
+    // default tenant; everything else must match the requested store.
+    const filtered = raw.filter(l => (l.storeId || DEFAULT_STORE_ID) === storeId);
+    return filtered.map((l: RawStorageLead) => ({
       id: l.id,
       store_id: storeId,
       name: l.name,
@@ -735,7 +622,8 @@ export const db = {
     }));
   },
 
-  createLead: async (lead: Omit<Lead, 'id'> & { id?: string }): Promise<Lead> => {
+  createLead: async (lead: Omit<Lead, 'id' | 'store_id' | 'score' | 'status' | 'created_at'> &
+    Partial<Pick<Lead, 'store_id' | 'score' | 'status' | 'created_at'>> & { id?: string }): Promise<Lead> => {
     const id = lead.id || `lead-${Date.now().toString(36)}`;
     const fullLead: Lead = {
       ...lead,
@@ -753,6 +641,7 @@ export const db = {
 
     interface EcosystemLeadItem {
       id: string;
+      storeId?: string;
       name: string;
       contact: string;
       contactType: 'whatsapp' | 'email' | 'phone';
@@ -771,6 +660,7 @@ export const db = {
     const raw = getLocalStorageData<EcosystemLeadItem>('miller_leads_v1', []);
     const ecosystemItem: EcosystemLeadItem = {
       id: fullLead.id,
+      storeId: fullLead.store_id,
       name: fullLead.name,
       contact: fullLead.contact,
       contactType: fullLead.contact_type,
@@ -949,7 +839,8 @@ export const db = {
     return raw.filter(inv => !inv.store_id || inv.store_id === storeId);
   },
 
-  createSupplierInvoice: async (invoice: Omit<SupplierInvoice, 'id'> & { id?: string }): Promise<SupplierInvoice> => {
+  createSupplierInvoice: async (invoice: Omit<SupplierInvoice, 'id' | 'store_id' | 'status' | 'created_at'> &
+    Partial<Pick<SupplierInvoice, 'store_id' | 'status' | 'created_at'>> & { id?: string }): Promise<SupplierInvoice> => {
     const id = invoice.id || `inv-${Date.now().toString(36)}`;
     const fullInvoice: SupplierInvoice = {
       ...invoice,
