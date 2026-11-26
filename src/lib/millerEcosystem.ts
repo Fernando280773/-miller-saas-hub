@@ -10,6 +10,10 @@ export const BIZ_INFO_KEY    = 'miller_business_info_v1';
 export const SOCIAL_CREDS_KEY= 'miller_social_creds_v1';
 export const AGENT_CFG_KEY   = 'miller_agent_cfg_v1';
 export const WA_DRAFTS_KEY   = 'miller_wa_drafts_v1';
+export const JC_BASKET_KEY   = 'miller_jc_basket_v1';
+export const JC_ORDERS_KEY   = 'miller_jc_orders_v1';
+export const JC_MENU_KEY     = 'miller_jc_menu_v1';
+export const JC_BOOKINGS_KEY = 'miller_jc_bookings_v1';
 
 export const ECOSYSTEM_KEYS = {
   leads: LEADS_KEY,
@@ -18,6 +22,10 @@ export const ECOSYSTEM_KEYS = {
   socialCreds: SOCIAL_CREDS_KEY,
   agentConfig: AGENT_CFG_KEY,
   waDrafts: WA_DRAFTS_KEY,
+  jcBasket: JC_BASKET_KEY,
+  jcOrders: JC_ORDERS_KEY,
+  jcMenu: JC_MENU_KEY,
+  jcBookings: JC_BOOKINGS_KEY,
 };
 
 /* ─── Shared types — single source of truth in ./types ─── */

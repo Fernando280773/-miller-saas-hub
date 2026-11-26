@@ -1,0 +1,310 @@
+/* The Jacket Club — restaurant ordering theme (matches the design canvas) */
+
+.theme {
+  --jc-green: #1F4A2C;
+  --jc-green-2: #2E6B3F;
+  --jc-cream: #FBF6EA;
+  --jc-sand: #F3E2B8;
+  --jc-tan: #E9D3A4;
+  --jc-line: #E6D9BC;
+  --jc-yellow: #F2C230;
+  --jc-ink: #2A1D12;
+  --jc-brown: #3A2414;
+  --jc-muted: #6B5A48;
+  --jc-mint: #DCEBDD;
+  --jc-paper: #FFFDF7;
+  --jc-border: #8A7A66;
+  --jc-rust: #9A4A0B;
+  --jc-peach: #F6D9C4;
+  --jc-bg: #EFE6D2;
+  font-family: var(--jc-sans), 'DM Sans', system-ui, sans-serif;
+  color: var(--jc-ink);
+  line-height: 1.35;
+}
+.theme a { color: var(--jc-green); }
+.theme a:hover { color: var(--jc-green-2); }
+.theme h1, .theme h2, .theme h3 { font-family: inherit; }
+.theme button { font-family: inherit; }
+
+/* ── Phone shell ─────────────────────────── */
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--jc-bg);
+}
+.phone {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--jc-cream);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+@media (min-width: 640px) {
+  .shell { padding: 24px 0; }
+  .phone { min-height: calc(100dvh - 48px); border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(42, 29, 18, 0.15); }
+}
+
+.display, .theme .display { font-family: var(--jc-display), 'Alfa Slab One', Georgia, serif; font-weight: 400; }
+.muted { color: var(--jc-muted); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── Headers ─────────────────────────────── */
+.brandHeader {
+  background: var(--jc-green);
+  color: var(--jc-sand);
+  padding: 16px 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brandName { font-size: 20px; letter-spacing: 0.3px; }
+.subHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--jc-line);
+}
+.subHeader h1 { margin: 0; font-size: 22px; color: var(--jc-green); flex: 1; }
+.iconLink {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--jc-ink) !important;
+  border-radius: 50%;
+}
+.closeBtn { position: absolute; left: 12px; top: 12px; background: var(--jc-cream); }
+
+/* ── Pills, tags ─────────────────────────── */
+.pillYellow { background: var(--jc-yellow); color: var(--jc-ink); padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.pillMint { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--jc-mint); color: var(--jc-green); }
+.tagHalal { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--jc-mint); color: var(--jc-green); }
+.tagAllergen { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: var(--jc-sand); color: var(--jc-brown); }
+.tagSoldOut { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--jc-peach); color: #8A3A0B; }
+
+/* ── Segmented mode buttons ─────────────── */
+.modes { display: grid; gap: 6px; }
+.mode {
+  height: 44px;
+  border-radius: 10px;
+  border: 2px solid var(--jc-green);
+  background: var(--jc-cream);
+  color: var(--jc-green);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.modeOn { background: var(--jc-green); color: var(--jc-cream); }
+
+/* ── Category chips ─────────────────────── */
+.chips {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--jc-line);
+  position: sticky;
+  top: 0;
+  background: var(--jc-cream);
+  z-index: 2;
+}
+.chip {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--jc-sand);
+  color: var(--jc-ink) !important;
+  text-decoration: none;
+  font-size: 14px;
+}
+.chipOn { background: var(--jc-green); color: var(--jc-cream) !important; font-weight: 700; }
+
+/* ── Menu list ───────────────────────────── */
+.section { display: flex; flex-direction: column; scroll-margin-top: 70px; }
+.sectionTitle { margin: 0 0 4px; font-size: 18px; color: var(--jc-green); }
+.photo {
+  border-radius: 12px;
+  background: var(--jc-tan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--jc-muted);
+}
+.favCard { display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: var(--jc-ink) !important; }
+.row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--jc-line);
+  text-decoration: none;
+  color: var(--jc-ink) !important;
+}
+.rowDisabled { opacity: 0.55; pointer-events: none; }
+.rowThumb { width: 84px; height: 84px; flex: none; position: relative; }
+.plus {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--jc-green);
+  color: var(--jc-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Buttons ─────────────────────────────── */
+.btnPrimary, .btnDark, .btnOutline, .btnGhost {
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  padding: 0 18px;
+}
+.btnPrimary { background: var(--jc-green); color: var(--jc-cream) !important; }
+.btnPrimary:hover { background: var(--jc-green-2); }
+.btnPrimary:disabled { background: #8FA494; cursor: not-allowed; }
+.btnDark { background: var(--jc-ink); color: var(--jc-cream) !important; }
+.btnOutline { background: none; border: 2px solid var(--jc-green); color: var(--jc-green) !important; }
+.btnGhost { background: none; border: 1px dashed var(--jc-border); color: var(--jc-muted); font-weight: 400; font-size: 13px; height: 44px; }
+.btnYellow { background: var(--jc-yellow); color: var(--jc-ink) !important; }
+
+.floatBasket {
+  position: sticky;
+  bottom: 16px;
+  margin: 0 16px 16px;
+  height: 56px;
+  border-radius: 14px;
+  justify-content: space-between;
+  box-shadow: 0 6px 18px rgba(31, 74, 44, 0.3);
+  z-index: 3;
+}
+.countBadge { background: var(--jc-yellow); color: var(--jc-ink); border-radius: 999px; padding: 2px 10px; font-size: 14px; }
+
+/* ── Bottom action bar ───────────────────── */
+.bottomBar {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 16px 16px;
+  background: var(--jc-cream);
+  border-top: 1px solid var(--jc-line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 3;
+}
+
+.main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Option rows ─────────────────────────── */
+.groupHead { display: flex; justify-content: space-between; align-items: baseline; }
+.groupHead h2 { margin: 0; font-size: 16px; }
+.optRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border: none;
+  border-bottom: 1px solid var(--jc-line);
+  background: none;
+  padding: 0;
+  text-align: left;
+  font-size: 15px;
+  color: var(--jc-ink);
+  cursor: pointer;
+  width: 100%;
+}
+.optRow:disabled { color: #A89880; cursor: not-allowed; }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--jc-border); flex: none; }
+.radioOn { border: 7px solid var(--jc-green); }
+.check { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--jc-border); flex: none; display: flex; align-items: center; justify-content: center; color: var(--jc-cream); }
+.checkOn { background: var(--jc-green); border-color: var(--jc-green); }
+
+.stepper { display: flex; align-items: center; border: 2px solid var(--jc-green); border-radius: 12px; height: 52px; }
+.stepper button { width: 44px; height: 48px; border: none; background: none; color: var(--jc-green); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.stepper span { min-width: 24px; text-align: center; font-weight: 700; }
+.stepperSm { display: flex; align-items: center; border: 1px solid var(--jc-border); border-radius: 10px; }
+.stepperSm button { width: 44px; height: 40px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--jc-ink); }
+
+/* ── Forms ───────────────────────────────── */
+.label { font-size: 13px; color: var(--jc-muted); }
+.input, .textarea {
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--jc-border);
+  padding: 0 12px;
+  font-size: 15px;
+  background: var(--jc-paper);
+  color: var(--jc-ink);
+  font-family: inherit;
+  width: 100%;
+}
+.textarea { min-height: 64px; padding: 10px; resize: none; }
+.input:focus, .textarea:focus { outline: 2px solid var(--jc-green); outline-offset: 1px; }
+
+.slot {
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--jc-border);
+  background: var(--jc-paper);
+  color: var(--jc-ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.slotOn { border: 2px solid var(--jc-green); background: var(--jc-green); color: var(--jc-cream); font-weight: 700; }
+.slotSoft { border: 2px solid var(--jc-green); background: var(--jc-mint); color: var(--jc-green); font-weight: 700; }
+.slotFull { border: 1px dashed #B8A88F; background: none; color: var(--jc-border); text-decoration: line-through; cursor: not-allowed; }
+
+.card { padding: 14px; border-radius: 12px; background: var(--jc-sand); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.cardMint { background: var(--jc-mint); }
+.sumRow { display: flex; justify-content: space-between; }
+
+.banner { margin: 8px 16px 0; padding: 10px 12px; border-radius: 10px; background: var(--jc-peach); color: #8A3A0B; font-weight: 700; font-size: 14px; }
+
+/* ── Staff (kitchen / admin) ─────────────── */
+.staffFrame { background: var(--jc-bg); border-radius: 16px; overflow: hidden; min-height: calc(100vh - 5rem); display: flex; flex-direction: column; }
+.staffBar {
+  min-height: 64px;
+  background: var(--jc-green);
+  color: var(--jc-sand);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+}
+.kitchenBody { flex: 1; display: flex; gap: 14px; padding: 14px; min-height: 0; flex-wrap: wrap; }
+.kCol { flex: 1 1 240px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.kCol h2 { margin: 0; font-size: 18px; display: flex; justify-content: space-between; }
+.ticket { background: var(--jc-cream); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 0 #D9CBAA; }
+.ticketNew { background: var(--jc-paper); outline: 3px solid var(--jc-yellow); }
+.badge { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.aside { flex: 0 1 250px; min-width: 220px; display: flex; flex-direction: column; gap: 10px; }
+.panel { background: var(--jc-cream); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.table th { text-align: left; color: var(--jc-muted); font-size: 13px; padding: 8px 6px; font-weight: 500; }
+.table td { padding: 10px 6px; border-top: 1px solid var(--jc-line); }
+.table tr.selected td { background: var(--jc-sand); }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; }
+.avail { min-width: 110px; height: 36px; border-radius: 999px; border: none; background: var(--jc-mint); color: var(--jc-green); font-weight: 700; font-size: 13px; cursor: pointer; }
+.availOff { background: var(--jc-peach); color: #8A3A0B; }
+.allergenChip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--jc-border); background: none; color: var(--jc-ink); cursor: pointer; }
+.allergenOn { background: var(--jc-green); border-color: var(--jc-green); color: var(--jc-cream); }
+.linkBtn { border: none; background: none; padding: 0; font-weight: 700; font-size: 14px; color: var(--jc-green); cursor: pointer; text-decoration: underline; text-align: left; }
