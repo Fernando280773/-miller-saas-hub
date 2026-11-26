@@ -213,3 +213,97 @@ export interface AgentStatus {
   enabled: boolean;
   tasksDone: number;
 }
+
+// ── Jacket Club restaurant ordering (src/lib/jacketClub.ts) ─────────────────
+export type JcMode = 'collect' | 'table' | 'book' | 'delivery';
+export type JcOrderStatus = 'new' | 'preparing' | 'ready' | 'out' | 'done';
+
+export interface JcOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface JcOptionGroup {
+  id: string;
+  title: string;
+  /** single = radio, multi = checkboxes (up to `max`) */
+  type: 'single' | 'multi';
+  /** a required single choice cannot be cleared; first option is the default */
+  required?: boolean;
+  max?: number;
+  /** multi options shown as "Free" when price is 0 */
+  options: JcOption[];
+  defaults?: string[];
+}
+
+export interface JcMenuItem {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  allergens: string[];
+  halal: boolean;
+  favourite?: boolean;
+  groups: JcOptionGroup[];
+}
+
+export interface JcBasketLine {
+  key: string;
+  itemId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  /** groupId → chosen option ids */
+  picks: Record<string, string[]>;
+  summary: string;
+}
+
+export interface JcBasket {
+  mode: JcMode;
+  table: string;
+  lines: JcBasketLine[];
+  note: string;
+  lastOrderId?: string;
+}
+
+export interface JcOrder {
+  id: string;
+  num: number;
+  mode: Exclude<JcMode, 'book'>;
+  status: JcOrderStatus;
+  lines: { qty: number; name: string; opts: string; itemId?: string; price: number }[];
+  note?: string;
+  customerName: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  addressNote?: string;
+  distance?: string;
+  table?: string;
+  collectAt?: string;
+  driver?: string;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  createdAt: string;
+  startedAt?: string;
+  readyAt?: string;
+}
+
+export interface JcMenuState {
+  paused: boolean;
+  soldOut: string[];
+  overrides: Record<string, Partial<Pick<JcMenuItem, 'name' | 'price' | 'description' | 'allergens'>>>;
+}
+
+export interface JcBooking {
+  id: string;
+  name: string;
+  people: number;
+  date: string;
+  time: string;
+  table?: string;
+  deposit: number;
+}

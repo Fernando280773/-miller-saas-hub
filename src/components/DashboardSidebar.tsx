@@ -21,7 +21,9 @@ import {
   Shield,
   LogOut,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  ChefHat,
+  UtensilsCrossed
 } from 'lucide-react';
 import { getActiveUser, setActiveUser, logoutUser, DEMO_USERS, AuthUser, UserRole } from '@/lib/auth';
 
@@ -59,6 +61,8 @@ export default function DashboardSidebar({ storeName = "Aura Artisans", storeLog
     { name: 'Analytics Console', href: '/dashboard', icon: TrendingUp, minRole: 'staff' },
     { name: 'Product Catalog', href: '/dashboard/products', icon: Package, minRole: 'staff' },
     { name: 'Orders Logs', href: '/dashboard/orders', icon: ShoppingBag, minRole: 'staff' },
+    { name: 'Kitchen Display', href: '/dashboard/kitchen', icon: ChefHat, minRole: 'staff' },
+    { name: 'Restaurant Menu', href: '/dashboard/restaurant', icon: UtensilsCrossed, minRole: 'manager' },
     { name: 'Competitor Repricing', href: '/dashboard/competitor', icon: Sliders, minRole: 'manager' },
     { name: 'Ad Intelligence', href: '/dashboard/ads', icon: Megaphone, minRole: 'manager' },
     { name: 'AI Product Scraper', href: '/dashboard/scraper', icon: Bot, minRole: 'manager' },
