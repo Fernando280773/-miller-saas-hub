@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import s from '@/components/jacket/jacket.module.css';
-import { JC_VENUE, basketStore, clock, gbp, orderNumber, ordersStore, updateOrder, useNow, type JcOrder } from '@/lib/jacketClub';
+import { JC_VENUE, basketStore, clock, completePayment, gbp, orderNumber, ordersStore, updateOrder, useNow, type JcOrder } from '@/lib/jacketClub';
 
 const STEPS: Record<JcOrder['mode'], { label: string; heads: string[]; third: string; fourth: string }> = {
   collect: { label: 'Collect', third: 'Ready to collect', fourth: 'Collected', heads: ['We have your order', 'The kitchen is on it', 'Ready! Come and get it', 'Enjoy your meal'] },
@@ -29,8 +30,43 @@ export default function StatusPage() {
   const orders = ordersStore.use();
   const hydrated = useNow() !== null;
   const order = orders.find(o => o.id === basket.lastOrderId);
+  const sessionId = hydrated ? new URLSearchParams(window.location.search).get('session_id') : null;
+  const [payError, setPayError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  // Back from Stripe Checkout: confirm the payment server-side, then record the order.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    completePayment(sessionId).then(r => {
+      if (cancelled) return;
+      if ('error' in r) return setPayError(r.error);
+      setConfirmed(true);
+      window.history.replaceState(null, '', '/order/status');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   if (!hydrated) return null;
+
+  if (sessionId && !confirmed) {
+    return (
+      <main className={s.main} style={{ alignItems: 'center', textAlign: 'center', paddingTop: 48 }} aria-live="polite">
+        <Image src={JC_VENUE.logo} alt="" width={96} height={96} style={{ borderRadius: '50%' }} />
+        <h1 className={s.display} style={{ color: 'var(--jc-green)', fontSize: 22, margin: 0 }}>
+          {payError ? 'We couldn’t confirm your payment' : 'Confirming your payment…'}
+        </h1>
+        {payError && (
+          <>
+            <p className={s.muted} style={{ margin: 0 }}>{payError} If you were charged, show this screen at the counter.</p>
+            <Link href="/order/checkout" className={s.btnPrimary} style={{ alignSelf: 'stretch' }}>Back to checkout</Link>
+          </>
+        )}
+      </main>
+    );
+  }
 
   if (!order) {
     return (

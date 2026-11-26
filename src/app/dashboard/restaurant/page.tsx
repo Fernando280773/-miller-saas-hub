@@ -61,6 +61,9 @@ function Editor({ item, onReset }: { item: JcMenuItem; onReset: () => void }) {
       <input id="ename" className={s.input} style={{ height: 44 }} value={name} onChange={e => edit(setName)(e.target.value)} />
       <label htmlFor="eprice" className={s.label}>Price (£)</label>
       <input id="eprice" className={s.input} style={{ height: 44 }} inputMode="decimal" value={price} onChange={e => edit(setPrice)(e.target.value)} aria-invalid={!valid} />
+      <div className={s.muted} style={{ fontSize: 12 }}>
+        Price edits change what this device shows. Customers are charged the menu price in <code>src/lib/jacketMenu.ts</code> until the menu moves to the database.
+      </div>
       <label htmlFor="edesc" className={s.label}>Description</label>
       <textarea id="edesc" className={s.textarea} value={desc} onChange={e => edit(setDesc)(e.target.value)} />
       <div className={s.label} id="allergen-label">Allergens</div>
