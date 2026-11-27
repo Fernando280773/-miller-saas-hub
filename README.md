@@ -135,5 +135,24 @@ npm run build
 
 ---
 
+## 🚀 Deploying to a VPS (Hostinger)
+
+`main` deploys itself to the VPS after CI passes (`.github/workflows/deploy.yml`), using an SSH key stored in GitHub secrets.
+
+1. On a fresh Ubuntu VPS, as root:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Fernando280773/-miller-saas-hub/main/deploy/setup-vps.sh -o setup-vps.sh
+   sudo bash setup-vps.sh your-domain.com you@example.com
+   ```
+   It installs Node 22, nginx, PM2 and certbot, creates a `deploy` user, and prints the remaining steps.
+2. Add the printed deploy key to **GitHub → Settings → Deploy keys** (read-only).
+3. Add the **Actions secrets** `VPS_HOST`, `VPS_USER` (`deploy`) and `VPS_SSH_KEY`. Add `VPS_PORT` too if SSH isn't on port 22.
+4. Create `/var/www/miller-saas-hub/.env.production` on the server with the Supabase and Stripe variables above.
+5. Point your domain's DNS at the VPS, run the printed `certbot` command for HTTPS, then run **Actions → Deploy to VPS**.
+
+Builds need about 2 GB of RAM. On a 1 GB plan, add swap first.
+
+---
+
 ## 📄 License
 MIT License © 2026 Miller SaaS Hub. All rights reserved.
