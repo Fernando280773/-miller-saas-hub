@@ -105,6 +105,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 # Stripe Payments
 STRIPE_PUBLIC_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
+# Optional: without STRIPE_SECRET_KEY, subscription checkout and Jacket Club
+# order/deposit payments run in simulated demo mode (nothing is charged).
 
 # AI & Scraper APIs
 JIGSAWSTACK_KEY=your_jigsawstack_api_key

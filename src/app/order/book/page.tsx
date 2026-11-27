@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Minus, Plus } from 'lucide-react';
 import s from '@/components/jacket/jacket.module.css';
 import SubHeader from '@/components/jacket/SubHeader';
-import { JC_VENUE, addBooking, gbp, useNow } from '@/lib/jacketClub';
+import { JC_VENUE, completePayment, gbp, startDepositPayment, useNow } from '@/lib/jacketClub';
 
 const TIMES = ['10:00', '12:00', '13:00', '14:00', '17:00', '18:00', '19:00', '20:00'];
 const SUNDAY_TIMES = ['11:00', '12:00', '13:00', '14:00', '17:00', '18:00', '19:00', '20:00'];
@@ -20,6 +20,29 @@ export default function BookPage() {
   const [day, setDay] = useState(2);
   const [slot, setSlot] = useState('18:00');
   const [done, setDone] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [payError, setPayError] = useState<string | null>(null);
+
+  const params = now !== null ? new URLSearchParams(window.location.search) : null;
+  const sessionId = params?.get('session_id') ?? null;
+  const cancelled = params?.has('cancelled') ?? false;
+
+  // Back from Stripe Checkout: confirm the deposit was paid, then record the booking.
+  useEffect(() => {
+    if (!sessionId) return;
+    let stop = false;
+    completePayment(sessionId).then(r => {
+      if (stop) return;
+      if ('error' in r) return setPayError(r.error);
+      const b = r.booking;
+      setDone(b ? `${b.people} ${b.people === 1 ? 'person' : 'people'} · ${b.date} · ${b.time}` : 'Your table is booked');
+      window.history.replaceState(null, '', '/order/book');
+    });
+    return () => {
+      stop = true;
+    };
+  }, [sessionId]);
 
   const days = now
     ? Array.from({ length: 7 }, (_, i) => {
@@ -33,12 +56,41 @@ export default function BookPage() {
   const deposit = people * JC_VENUE.depositPerPerson;
   const slotOk = !!d && times.includes(slot) && !isFull(d, slot);
 
-  const confirm = () => {
+  const confirm = async () => {
     if (!d || !slotOk) return;
     const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    addBooking({ name: 'You', people, date: label, time: slot, deposit });
-    setDone(`${people} ${people === 1 ? 'person' : 'people'} · ${label} · ${slot}`);
+    setError('');
+    setBusy(true);
+    const r = await startDepositPayment({ name: 'You', people, date: label, time: slot, deposit });
+    if ('error' in r) {
+      setBusy(false);
+      setError(r.error);
+    } else if ('redirect' in r) {
+      window.location.assign(r.redirect);
+    } else {
+      setBusy(false);
+      setDone(`${people} ${people === 1 ? 'person' : 'people'} · ${label} · ${slot}`);
+    }
   };
+
+  if (sessionId && !done) {
+    return (
+      <>
+        <SubHeader back="/order" backLabel="Back to menu" title="Book a table" />
+        <main className={s.main} style={{ alignItems: 'center', textAlign: 'center', paddingTop: 32 }} aria-live="polite">
+          <h2 className={s.display} style={{ margin: 0, fontSize: 22, color: 'var(--jc-green)' }}>
+            {payError ? 'We couldn’t confirm your deposit' : 'Confirming your deposit…'}
+          </h2>
+          {payError && (
+            <>
+              <p className={s.muted} style={{ margin: 0 }}>{payError}</p>
+              <Link href="/order/book" className={s.btnPrimary} style={{ alignSelf: 'stretch' }}>Try again</Link>
+            </>
+          )}
+        </main>
+      </>
+    );
+  }
 
   if (done) {
     return (
@@ -48,7 +100,7 @@ export default function BookPage() {
           <Image src={JC_VENUE.logo} alt="" width={120} height={120} style={{ borderRadius: '50%' }} />
           <h2 className={s.display} style={{ margin: 0, fontSize: 26, color: 'var(--jc-green)' }}>You&apos;re booked</h2>
           <div style={{ fontSize: 17, fontWeight: 700 }}>{done}</div>
-          <div className={s.muted} style={{ fontSize: 14 }}>{gbp(deposit)} deposit paid. Confirmation sent by email and text.</div>
+          <div className={s.muted} style={{ fontSize: 14 }}>Deposit paid. Confirmation sent by email and text.</div>
           <button type="button" className={s.btnOutline} style={{ height: 48 }} onClick={() => setDone(null)}>Change or cancel</button>
           <Link href="/order" style={{ fontWeight: 700 }}>Order food now</Link>
         </main>
@@ -122,8 +174,13 @@ export default function BookPage() {
         </section>
       </main>
       <div className={s.bottomBar}>
-        <button type="button" className={s.btnPrimary} style={{ height: 56, borderRadius: 14 }} disabled={!slotOk} onClick={confirm}>
-          {slotOk ? `Pay ${gbp(deposit)} deposit and book` : 'Choose a time'}
+        {(error || (cancelled && !busy)) && (
+          <div role="alert" style={{ color: 'var(--jc-rust)', fontWeight: 700, fontSize: 14 }}>
+            {error || 'Payment cancelled — nothing was charged.'}
+          </div>
+        )}
+        <button type="button" className={s.btnPrimary} style={{ height: 56, borderRadius: 14 }} disabled={!slotOk || busy} onClick={confirm}>
+          {busy ? 'Opening secure payment…' : slotOk ? `Pay ${gbp(deposit)} deposit and book` : 'Choose a time'}
         </button>
       </div>
     </>

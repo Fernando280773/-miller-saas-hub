@@ -48,6 +48,7 @@ updates after an `await`, keeping the `react-hooks/set-state-in-effect` rule hap
 - `miller_jc_orders_v1` — Jacket Club orders (kitchen / driver / admin)
 - `miller_jc_menu_v1` — Jacket Club menu overrides, sold-out list, paused flag
 - `miller_jc_bookings_v1` — Jacket Club table bookings
+- `miller_jc_pending_v1` — Jacket Club order/deposit awaiting Stripe confirmation
 
 ## Branding rules
 - AI agent = **Miller AI** (never "Mila AI", never "Claude")

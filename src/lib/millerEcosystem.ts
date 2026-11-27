@@ -14,6 +14,7 @@ export const JC_BASKET_KEY   = 'miller_jc_basket_v1';
 export const JC_ORDERS_KEY   = 'miller_jc_orders_v1';
 export const JC_MENU_KEY     = 'miller_jc_menu_v1';
 export const JC_BOOKINGS_KEY = 'miller_jc_bookings_v1';
+export const JC_PENDING_KEY  = 'miller_jc_pending_v1';
 
 export const ECOSYSTEM_KEYS = {
   leads: LEADS_KEY,
@@ -26,6 +27,7 @@ export const ECOSYSTEM_KEYS = {
   jcOrders: JC_ORDERS_KEY,
   jcMenu: JC_MENU_KEY,
   jcBookings: JC_BOOKINGS_KEY,
+  jcPending: JC_PENDING_KEY,
 };
 
 /* ─── Shared types — single source of truth in ./types ─── */

@@ -290,6 +290,8 @@ export interface JcOrder {
   createdAt: string;
   startedAt?: string;
   readyAt?: string;
+  /** Stripe Checkout Session id, or sim_… for simulated demo payments */
+  paymentRef?: string;
 }
 
 export interface JcMenuState {
@@ -306,4 +308,5 @@ export interface JcBooking {
   time: string;
   table?: string;
   deposit: number;
+  paymentRef?: string;
 }

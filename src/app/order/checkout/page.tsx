@@ -11,7 +11,7 @@ import {
   collectionSlots,
   gbp,
   menuStore,
-  placeOrder,
+  startOrderPayment,
   useNow,
   type JcOrder,
 } from '@/lib/jacketClub';
@@ -37,19 +37,25 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const fee = mode === 'delivery' ? JC_VENUE.deliveryFee : 0;
   const total = subtotal + fee;
   const slots = now ? collectionSlots(now) : [];
+  // `now` is null during SSR/hydration, so reading the URL here never mismatches.
+  const cancelled = now !== null && new URLSearchParams(window.location.search).has('cancelled');
+  const notice = error || (cancelled && !busy ? 'Payment cancelled — nothing was charged.' : '');
   const belowMinimum = mode === 'delivery' && subtotal < JC_VENUE.deliveryMinimum;
 
-  const pay = () => {
+  const pay = async () => {
     if (!basket.lines.length) return setError('Your basket is empty.');
     if (menu.paused) return setError('We’re not taking new orders right now.');
     if (!name.trim() || !phone.trim()) return setError('Please add your name and mobile so we can update you.');
     if (mode === 'delivery' && !address.trim()) return setError('Please add a delivery address.');
     if (belowMinimum) return setError(`Delivery needs a ${gbp(JC_VENUE.deliveryMinimum)} minimum order.`);
-    placeOrder({
+    setError('');
+    setBusy(true);
+    const r = await startOrderPayment({
       mode,
       customerName: name.trim(),
       phone: phone.trim(),
@@ -58,7 +64,14 @@ export default function CheckoutPage() {
       addressNote: mode === 'delivery' ? flat.trim() || undefined : undefined,
       collectAt: mode === 'collect' ? collectAt : undefined,
     });
-    router.push('/order/status');
+    if ('error' in r) {
+      setBusy(false);
+      setError(r.error);
+    } else if ('redirect' in r) {
+      window.location.assign(r.redirect);
+    } else {
+      router.push('/order/status');
+    }
   };
 
   return (
@@ -154,11 +167,13 @@ export default function CheckoutPage() {
       </main>
 
       <div className={s.bottomBar} style={{ gap: 8 }}>
-        {error && <div role="alert" style={{ color: 'var(--jc-rust)', fontWeight: 700, fontSize: 14 }}>{error}</div>}
-        <button type="button" className={s.btnDark} onClick={pay}>Pay with Apple Pay · {gbp(total)}</button>
-        <button type="button" className={s.btnPrimary} onClick={pay}>Pay by card</button>
+        {notice && <div role="alert" style={{ color: 'var(--jc-rust)', fontWeight: 700, fontSize: 14 }}>{notice}</div>}
+        <button type="button" className={s.btnDark} onClick={pay} disabled={busy}>
+          {busy ? 'Opening secure payment…' : `Pay with Apple Pay · ${gbp(total)}`}
+        </button>
+        <button type="button" className={s.btnPrimary} onClick={pay} disabled={busy}>Pay by card</button>
         <div className={s.muted} style={{ fontSize: 11, textAlign: 'center' }}>
-          By paying you agree to our <a href="#">terms</a> and <a href="#">privacy policy</a>.
+          Secure payment by Stripe. By paying you agree to our <a href="#">terms</a> and <a href="#">privacy policy</a>.
         </div>
       </div>
     </>
